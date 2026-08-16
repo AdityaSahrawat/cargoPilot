@@ -1,0 +1,54 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# MyPy / caches
+.mypy_cache/
+.pyre/
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+
+# Local DB
+*.sqlite3
+
+# Misc
+*.local
+
+# Docker-compose override for local development
+docker-compose.override.yml
