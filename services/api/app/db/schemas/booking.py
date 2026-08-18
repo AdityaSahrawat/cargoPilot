@@ -1,0 +1,64 @@
+from uuid import UUID
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from app.db.enums import ContainerType, BookingPriority, BookingStatus
+
+
+class BookingBase(BaseModel):
+    customer_company_id: UUID
+    carrier_company_id: UUID
+    origin_location_id: UUID
+    destination_location_id: UUID
+    container_type: ContainerType
+    quantity: int
+    requested_pickup_date: datetime
+    required_delivery_date: Optional[datetime] = None
+    voyage_id: Optional[UUID] = None
+    priority: Optional[BookingPriority] = None
+    status: BookingStatus = BookingStatus.DRAFT
+
+
+class BookingCreate(BookingBase):
+    pass
+
+
+class BookingUpdate(BaseModel):
+    customer_company_id: Optional[UUID] = None
+    carrier_company_id: Optional[UUID] = None
+    origin_location_id: Optional[UUID] = None
+    destination_location_id: Optional[UUID] = None
+    container_type: Optional[ContainerType] = None
+    quantity: Optional[int] = None
+    requested_pickup_date: Optional[datetime] = None
+    required_delivery_date: Optional[datetime] = None
+    voyage_id: Optional[UUID] = None
+    priority: Optional[BookingPriority] = None
+    status: Optional[BookingStatus] = None
+
+
+class BookingResponse(BookingBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EquipmentAssignmentBase(BaseModel):
+    container_id: UUID
+    booking_id: UUID
+    assigned_at: datetime
+    released_at: Optional[datetime] = None
+
+
+class EquipmentAssignmentCreate(EquipmentAssignmentBase):
+    pass
+
+
+class EquipmentAssignmentResponse(EquipmentAssignmentBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
