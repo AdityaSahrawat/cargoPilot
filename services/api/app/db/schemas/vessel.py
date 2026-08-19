@@ -1,11 +1,11 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
 from app.db.enums import VesselType, VesselStatus
+from app.db.schemas.base import CamelModel
 
 
-class VesselBase(BaseModel):
+class VesselBase(CamelModel):
     imo_number: str
     name: str
     owner_company_id: UUID
@@ -19,7 +19,7 @@ class VesselCreate(VesselBase):
     pass
 
 
-class VesselUpdate(BaseModel):
+class VesselUpdate(CamelModel):
     imo_number: Optional[str] = None
     name: Optional[str] = None
     owner_company_id: Optional[UUID] = None
@@ -33,5 +33,3 @@ class VesselResponse(VesselBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

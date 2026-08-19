@@ -1,110 +1,84 @@
 from uuid import UUID
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
 from app.db.enums import ContainerType, OptimizationStatus
+from app.db.schemas.base import CamelModel
 
 
-class OptimizationRunBase(BaseModel):
-    company_id: UUID
-    start_week: date
+class OptimizationRunRequest(CamelModel):
+    start_week: str
     horizon_weeks: int
-    status: OptimizationStatus = OptimizationStatus.PENDING
+    container_types: Optional[List[ContainerType]] = None
+    location_ids: Optional[List[UUID]] = None
+
+
+class OptimizationRunStartResponse(CamelModel):
+    run_id: UUID
+    status: OptimizationStatus
+
+
+class OptimizationRunResponse(CamelModel):
+    id: UUID
+    company_id: UUID
+    start_week: str
+    horizon_weeks: int
+    status: OptimizationStatus
     objective_value: Optional[float] = None
+    created_at: datetime
     completed_at: Optional[datetime] = None
 
 
-class OptimizationRunCreate(OptimizationRunBase):
-    pass
+class OptimizationRunApproveRequest(CamelModel):
+    comment: Optional[str] = "Approved for execution"
 
 
-class OptimizationRunResponse(OptimizationRunBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OptimizationRepositionBase(BaseModel):
+class OptimizationRunApproveResponse(CamelModel):
     run_id: UUID
+    status: str = "APPROVED"
+    approved_at: datetime
+
+
+class RepositioningPlanItem(CamelModel):
+    week: str
     voyage_leg_id: UUID
+    from_location_id: Optional[UUID] = None
+    to_location_id: Optional[UUID] = None
     container_type: ContainerType
     quantity: int
-    departure_week: date
+    cost: float = 0.0
 
 
-class OptimizationRepositionCreate(OptimizationRepositionBase):
-    pass
-
-
-class OptimizationRepositionResponse(OptimizationRepositionBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OptimizationLeaseBase(BaseModel):
-    run_id: UUID
-    lease_id: Optional[UUID] = None
+class LeasingPlanItem(CamelModel):
+    week: str
     location_id: UUID
     container_type: ContainerType
     quantity: int
-    week: date
+    cost: float = 0.0
 
 
-class OptimizationLeaseCreate(OptimizationLeaseBase):
-    pass
-
-
-class OptimizationLeaseResponse(OptimizationLeaseBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OptimizationInventoryBase(BaseModel):
-    run_id: UUID
+class InventoryPlanItem(CamelModel):
+    week: str
     location_id: UUID
     container_type: ContainerType
-    week: date
     quantity: int
 
 
-class OptimizationInventoryCreate(OptimizationInventoryBase):
-    pass
-
-
-class OptimizationInventoryResponse(OptimizationInventoryBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OptimizationDemandBase(BaseModel):
-    run_id: UUID
+class DemandPlanItem(CamelModel):
+    week: str
     location_id: UUID
     container_type: ContainerType
-    week: date
+    confirmed_demand: int = 0
     confirmed_served: int = 0
+    forecast_demand: int = 0
     forecast_served: int = 0
     forecast_backlog: int = 0
     confirmed_shortage: int = 0
 
 
-class OptimizationDemandCreate(OptimizationDemandBase):
-    pass
-
-
-class OptimizationDemandResponse(OptimizationDemandBase):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+class OptimizationPlanResponse(CamelModel):
+    run_id: UUID
+    total_cost: float
+    repositioning: List[RepositioningPlanItem] = []
+    leasing: List[LeasingPlanItem] = []
+    inventory: List[InventoryPlanItem] = []
+    demand: List[DemandPlanItem] = []

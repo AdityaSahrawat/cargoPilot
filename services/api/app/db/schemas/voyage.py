@@ -1,11 +1,11 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
 from app.db.enums import VoyageStatus
+from app.db.schemas.base import CamelModel
 
 
-class VoyageBase(BaseModel):
+class VoyageBase(CamelModel):
     service_id: UUID
     vessel_id: UUID
     voyage_number: str
@@ -18,7 +18,7 @@ class VoyageCreate(VoyageBase):
     pass
 
 
-class VoyageUpdate(BaseModel):
+class VoyageUpdate(CamelModel):
     service_id: Optional[UUID] = None
     vessel_id: Optional[UUID] = None
     voyage_number: Optional[str] = None
@@ -32,10 +32,8 @@ class VoyageResponse(VoyageBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
 
-
-class VoyagePortCallBase(BaseModel):
+class VoyagePortCallBase(CamelModel):
     voyage_id: UUID
     port_id: UUID
     sequence: int
@@ -52,10 +50,8 @@ class VoyagePortCallResponse(VoyagePortCallBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
 
-
-class VoyageLegBase(BaseModel):
+class VoyageLegBase(CamelModel):
     voyage_id: UUID
     from_port_call_id: UUID
     to_port_call_id: UUID
@@ -72,5 +68,3 @@ class VoyageLegResponse(VoyageLegBase):
     available_capacity: int
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

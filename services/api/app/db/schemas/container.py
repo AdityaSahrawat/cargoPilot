@@ -1,11 +1,11 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from typing import Optional, Dict, Any, List
 from app.db.enums import ContainerType, ContainerStatus, ContainerCondition, ContainerEventType
+from app.db.schemas.base import CamelModel
 
 
-class ContainerBase(BaseModel):
+class ContainerBase(CamelModel):
     container_number: str
     container_type: ContainerType
     owner_company_id: UUID
@@ -21,7 +21,7 @@ class ContainerCreate(ContainerBase):
     pass
 
 
-class ContainerUpdate(BaseModel):
+class ContainerUpdate(CamelModel):
     container_number: Optional[str] = None
     container_type: Optional[ContainerType] = None
     owner_company_id: Optional[UUID] = None
@@ -38,10 +38,13 @@ class ContainerResponse(ContainerBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+
+class ContainerListResponse(CamelModel):
+    data: List[ContainerResponse]
+    total: int
 
 
-class ContainerEventBase(BaseModel):
+class ContainerEventBase(CamelModel):
     container_id: UUID
     event_type: ContainerEventType
     timestamp: datetime
@@ -59,4 +62,11 @@ class ContainerEventResponse(ContainerEventBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+
+class InventorySummaryResponse(CamelModel):
+    location_id: UUID
+    container_type: ContainerType
+    available: int = 0
+    assigned: int = 0
+    in_transit: int = 0
+    under_repair: int = 0

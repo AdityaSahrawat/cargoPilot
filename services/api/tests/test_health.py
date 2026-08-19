@@ -1,14 +1,15 @@
-from fastapi.testclient import TestClient
 import os
+import sys
+from fastapi.testclient import TestClient
 
-from app.main import app
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from main import app
 
 client = TestClient(app)
 
 
 def test_health_aggregate_no_env():
-    # Ensure env vars are not set for a predictable result
     os.environ.pop("DATABASE_URL", None)
     os.environ.pop("KAFKA_BOOTSTRAP_SERVERS", None)
 

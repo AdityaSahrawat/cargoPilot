@@ -1,11 +1,11 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
 from app.db.enums import ContainerType
+from app.db.schemas.base import CamelModel
 
 
-class LeaseBase(BaseModel):
+class LeaseBase(CamelModel):
     lessor_company_id: UUID
     lessee_company_id: UUID
     container_type: ContainerType
@@ -21,7 +21,7 @@ class LeaseCreate(LeaseBase):
     pass
 
 
-class LeaseUpdate(BaseModel):
+class LeaseUpdate(CamelModel):
     lessor_company_id: Optional[UUID] = None
     lessee_company_id: Optional[UUID] = None
     container_type: Optional[ContainerType] = None
@@ -37,5 +37,3 @@ class LeaseResponse(LeaseBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

@@ -1,11 +1,11 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
 from app.db.enums import ContainerType, BookingPriority, BookingStatus
+from app.db.schemas.base import CamelModel
 
 
-class BookingBase(BaseModel):
+class BookingBase(CamelModel):
     customer_company_id: UUID
     carrier_company_id: UUID
     origin_location_id: UUID
@@ -23,7 +23,7 @@ class BookingCreate(BookingBase):
     pass
 
 
-class BookingUpdate(BaseModel):
+class BookingUpdate(CamelModel):
     customer_company_id: Optional[UUID] = None
     carrier_company_id: Optional[UUID] = None
     origin_location_id: Optional[UUID] = None
@@ -42,23 +42,24 @@ class BookingResponse(BookingBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+
+class BookingListResponse(CamelModel):
+    data: List[BookingResponse]
 
 
-class EquipmentAssignmentBase(BaseModel):
+class EquipmentAssignmentBase(CamelModel):
     container_id: UUID
     booking_id: UUID
     assigned_at: datetime
     released_at: Optional[datetime] = None
 
 
-class EquipmentAssignmentCreate(EquipmentAssignmentBase):
-    pass
+class EquipmentAssignmentCreate(CamelModel):
+    container_id: UUID
+    booking_id: UUID
 
 
 class EquipmentAssignmentResponse(EquipmentAssignmentBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

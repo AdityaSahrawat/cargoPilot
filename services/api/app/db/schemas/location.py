@@ -1,11 +1,11 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
 from app.db.enums import LocationType, OperationalStatus
+from app.db.schemas.base import CamelModel
 
 
-class LocationBase(BaseModel):
+class LocationBase(CamelModel):
     name: str
     location_type: LocationType
     unlocode: Optional[str] = None
@@ -22,7 +22,7 @@ class LocationCreate(LocationBase):
     pass
 
 
-class LocationUpdate(BaseModel):
+class LocationUpdate(CamelModel):
     name: Optional[str] = None
     location_type: Optional[LocationType] = None
     unlocode: Optional[str] = None
@@ -39,5 +39,3 @@ class LocationResponse(LocationBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
