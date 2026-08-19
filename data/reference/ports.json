@@ -1,0 +1,54 @@
+[
+  {
+    "unlocode": "CNSHA",
+    "name": "Port of Shanghai",
+    "locationType": "PORT",
+    "country": "China",
+    "region": "East Asia",
+    "latitude": 31.2304,
+    "longitude": 121.4737,
+    "operationalStatus": "ACTIVE"
+  },
+  {
+    "unlocode": "SGSIN",
+    "name": "Port of Singapore",
+    "locationType": "PORT",
+    "country": "Singapore",
+    "region": "Southeast Asia",
+    "latitude": 1.3521,
+    "longitude": 103.8198,
+    "operationalStatus": "ACTIVE"
+  },
+  {
+    "unlocode": "AEDXB",
+    "name": "Port of Jebel Ali (Dubai)",
+    "locationType": "PORT",
+    "country": "United Arab Emirates",
+    "region": "Middle East",
+    "latitude": 24.9857,
+    "longitude": 55.0611,
+    "operationalStatus": "ACTIVE"
+  },
+  {
+    "unlocode": "NLRTM",
+    "name": "Port of Rotterdam",
+    "locationType": "PORT",
+    "country": "Netherlands",
+    "region": "Europe",
+    "latitude": 51.9244,
+    "longitude": 4.4777,
+    "operationalStatus": "ACTIVE"
+  },
+  {
+    "unlocode": "AEDXB-DEPOT",
+    "name": "Dubai Central Equipment Depot",
+    "locationType": "DEPOT",
+    "country": "United Arab Emirates",
+    "region": "Middle East",
+    "latitude": 25.0200,
+    "longitude": 55.1200,
+    "storageCapacity": 5000,
+    "repairCapability": true,
+    "operationalStatus": "ACTIVE"
+  }
+]

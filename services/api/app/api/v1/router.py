@@ -10,6 +10,7 @@ from app.api.v1 import (
     forecast,
     optimization,
     dashboard,
+    scenarios,
 )
 
 api_v1_router = APIRouter()
@@ -23,3 +24,4 @@ api_v1_router.include_router(leases.router, tags=["Group 6 — Leasing"])
 api_v1_router.include_router(forecast.router, tags=["Group 7 — Demand & Forecast"])
 api_v1_router.include_router(optimization.router, tags=["Group 8 — Optimization"])
 api_v1_router.include_router(dashboard.router, tags=["Group 9 — Dashboard"])
+api_v1_router.include_router(scenarios.router, tags=["Scenarios & Test World"])

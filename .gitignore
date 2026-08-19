@@ -1,0 +1,34 @@
+# SQLite Databases
+cargo_pilot.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend
+node_modules/
+.next/
+dist/
+build/
+.out/
+.vercel
+
+# Environment & IDE
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
