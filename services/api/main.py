@@ -5,22 +5,35 @@ import uvicorn
 
 from app.api import health
 from app.api.v1 import api_v1_router
-from app.db.database import Base, engine, SessionLocal
+from app.db.database import Base, engine, test_engine, SessionLocal, TestSessionLocal
 from app.db import models
 from tests.test_world.scenario_builder import ScenarioBuilder
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Automatically ensure database tables exist and seed default world state on startup."""
+    """Ensure both Production DB and Isolated Test DB tables exist on startup."""
     Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+    Base.metadata.create_all(bind=test_engine)
+
+    # Seed production DB baseline if empty
+    prod_db = SessionLocal()
     try:
-        if not db.query(models.Company).first():
-            builder = ScenarioBuilder(db)
+        if not prod_db.query(models.Company).first():
+            builder = ScenarioBuilder(prod_db)
             builder.setup_base_world()
     finally:
-        db.close()
+        prod_db.close()
+
+    # Seed isolated test DB baseline if empty
+    test_db = TestSessionLocal()
+    try:
+        if not test_db.query(models.Company).first():
+            builder = ScenarioBuilder(test_db)
+            builder.setup_base_world()
+    finally:
+        test_db.close()
+
     yield
 
 

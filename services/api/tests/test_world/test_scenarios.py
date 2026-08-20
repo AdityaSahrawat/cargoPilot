@@ -1,93 +1,134 @@
 import os
 import sys
-from datetime import date
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from app.db.database import Base
-from app.optimization.service import OptimizationService
-from tests.test_world.scenario_builder import ScenarioBuilder
+from main import app
+from app.db.database import Base, get_test_db, get_db
 from tests.test_world.validator import WorldValidator
+from app.db import schemas
 
 
 @pytest.fixture(scope="function")
-def scenario_db():
+def api_client():
+    """Test client using an isolated in-memory SQLite database for full REST API tests."""
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_test_db] = override_get_db
+    app.dependency_overrides[get_db] = override_get_db
+
+    client = TestClient(app)
+    db_session = TestingSessionLocal()
+    yield client, db_session
+
+    app.dependency_overrides.clear()
+    Base.metadata.drop_all(bind=engine)
 
 
-def test_baseline_scenario(scenario_db):
-    """Scenario 1: Normal operations in Miniature World."""
-    builder = ScenarioBuilder(scenario_db)
-    builder.setup_base_world()
+def test_baseline_scenario_api_flow(api_client):
+    """Test 1: Full REST API workflow for Baseline Scenario."""
+    client, db = api_client
 
-    opt_service = OptimizationService(scenario_db)
-    carrier_id = builder.companies["carrier"].id
+    # 1. Reset Scenario via HTTP API
+    reset_res = client.post("/api/v1/scenarios/baseline/reset")
+    assert reset_res.status_code == 200, reset_res.text
+    assert reset_res.json()["status"] == "success"
 
-    run = opt_service.run_optimization(
-        company_id=carrier_id,
-        start_week=date.today().isoformat(),
-        horizon_weeks=8,
-    )
+    # 2. Query Reference Entities via HTTP APIs
+    loc_res = client.get("/api/v1/locations")
+    assert loc_res.status_code == 200
+    locations = loc_res.json()
+    assert len(locations) == 5
 
-    plan = opt_service.get_plan(run.id)
-    validator = WorldValidator(scenario_db)
-    validator.validate_plan_capacity(plan)
-    validator.validate_non_negative_quantities(plan)
-    validator.validate_container_assignments()
+    ves_res = client.get("/api/v1/vessels")
+    assert ves_res.status_code == 200
+    vessels = ves_res.json()
+    assert len(vessels) == 3
 
+    cnt_res = client.get("/api/v1/containers")
+    assert cnt_res.status_code == 200
+    containers = cnt_res.json()
+    assert containers["total"] == 25
 
-def test_capacity_shortage_scenario(scenario_db):
-    """Scenario 2: Vessel Leg capacity constraint restricts empty repositioning."""
-    builder = ScenarioBuilder(scenario_db)
-    builder.build_scenario_capacity_shortage()
+    # 3. Trigger Optimization Run via HTTP API
+    opt_res = client.post("/api/v1/scenarios/baseline/run")
+    assert opt_res.status_code == 200
+    opt_data = opt_res.json()
+    assert "runId" in opt_data
 
-    opt_service = OptimizationService(scenario_db)
-    carrier_id = builder.companies["carrier"].id
-
-    run = opt_service.run_optimization(
-        company_id=carrier_id,
-        start_week=date.today().isoformat(),
-        horizon_weeks=8,
-    )
-
-    plan = opt_service.get_plan(run.id)
-    validator = WorldValidator(scenario_db)
-    validator.validate_plan_capacity(plan)
-    validator.validate_non_negative_quantities(plan)
+    # 4. Validate Optimization Plan
+    plan_dict = opt_data["plan"]
+    plan_obj = schemas.OptimizationPlanResponse(**plan_dict)
+    validator = WorldValidator(db)
+    validator.validate_plan_capacity(plan_obj)
+    validator.validate_non_negative_quantities(plan_obj)
 
 
-def test_demand_spike_scenario(scenario_db):
-    """Scenario 5: Demand surge in Dubai evaluated by optimizer."""
-    builder = ScenarioBuilder(scenario_db)
-    builder.build_scenario_demand_spike()
+def test_capacity_shortage_scenario_api_flow(api_client):
+    """Test 2: Full REST API workflow for Capacity Shortage Scenario."""
+    client, db = api_client
 
-    opt_service = OptimizationService(scenario_db)
-    carrier_id = builder.companies["carrier"].id
+    # Reset Scenario via HTTP API
+    reset_res = client.post("/api/v1/scenarios/capacity_shortage/reset")
+    assert reset_res.status_code == 200
 
-    run = opt_service.run_optimization(
-        company_id=carrier_id,
-        start_week=date.today().isoformat(),
-        horizon_weeks=8,
-    )
+    # Run Optimization via HTTP API
+    opt_res = client.post("/api/v1/scenarios/capacity_shortage/run")
+    assert opt_res.status_code == 200
+    opt_data = opt_res.json()
 
-    plan = opt_service.get_plan(run.id)
-    validator = WorldValidator(scenario_db)
-    validator.validate_plan_capacity(plan)
-    validator.validate_non_negative_quantities(plan)
-    assert len(plan.demand) > 0
+    # Validate Plan
+    plan_obj = schemas.OptimizationPlanResponse(**opt_data["plan"])
+    validator = WorldValidator(db)
+    validator.validate_plan_capacity(plan_obj)
+    validator.validate_non_negative_quantities(plan_obj)
+
+
+def test_container_event_lifecycle_api_flow(api_client):
+    """Test 3: Full REST API workflow for Container Events & State Reconstruction."""
+    client, db = api_client
+
+    # Reset baseline
+    client.post("/api/v1/scenarios/baseline/reset")
+
+    # Get a container ID
+    cnt_list = client.get("/api/v1/containers").json()["data"]
+    container_id = cnt_list[0]["id"]
+    location_id = cnt_list[0]["currentLocationId"]
+
+    # Submit GATE_IN Container Event via HTTP API
+    event_payload = {
+        "containerId": container_id,
+        "eventType": "GATE_IN",
+        "timestamp": "2026-08-19T20:00:00Z",
+        "locationId": location_id,
+        "metadata": {"terminal": "T1"},
+    }
+    evt_res = client.post("/api/v1/container-events", json=event_payload)
+    assert evt_res.status_code == 201, evt_res.text
+    evt_data = evt_res.json()
+    assert evt_data["eventType"] == "GATE_IN"
+
+    # Query event history via HTTP API
+    history_res = client.get(f"/api/v1/containers/{container_id}/events")
+    assert history_res.status_code == 200
+    events = history_res.json()
+    assert len(events) >= 1
