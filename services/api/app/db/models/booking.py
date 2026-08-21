@@ -40,6 +40,11 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     required_delivery_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    requested_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    empty_pickup_open_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    gate_cutoff_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     voyage_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("voyages.id", ondelete="SET NULL"),
@@ -47,11 +52,12 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     )
     priority: Mapped[Optional[BookingPriority]] = mapped_column(
         SQLEnum(BookingPriority, native_enum=False),
+        default=BookingPriority.NORMAL,
         nullable=True,
     )
     status: Mapped[BookingStatus] = mapped_column(
         SQLEnum(BookingStatus, native_enum=False),
-        default=BookingStatus.DRAFT,
+        default=BookingStatus.PENDING,
         nullable=False,
     )
 

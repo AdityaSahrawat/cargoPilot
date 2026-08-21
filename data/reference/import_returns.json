@@ -1,0 +1,16 @@
+[
+  {
+    "id": "IR001",
+    "unlocode": "INMAA",
+    "containerType": "40FT_DRY",
+    "week": "2026-W36",
+    "expectedImportReturns": 8
+  },
+  {
+    "id": "IR002",
+    "unlocode": "AEDXB",
+    "containerType": "40FT_DRY",
+    "week": "2026-W36",
+    "expectedImportReturns": 12
+  }
+]

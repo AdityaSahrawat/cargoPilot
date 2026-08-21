@@ -1,0 +1,26 @@
+[
+  {
+    "id": "DF001",
+    "unlocode": "INMAA",
+    "containerType": "40FT_DRY",
+    "week": "2026-W36",
+    "quantity": 18,
+    "confidence": 0.82
+  },
+  {
+    "id": "DF002",
+    "unlocode": "INMAA",
+    "containerType": "20FT_DRY",
+    "week": "2026-W36",
+    "quantity": 11,
+    "confidence": 0.76
+  },
+  {
+    "id": "DF003",
+    "unlocode": "AEDXB",
+    "containerType": "40FT_DRY",
+    "week": "2026-W37",
+    "quantity": 15,
+    "confidence": 0.79
+  }
+]

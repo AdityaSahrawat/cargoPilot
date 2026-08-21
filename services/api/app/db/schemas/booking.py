@@ -14,9 +14,13 @@ class BookingBase(CamelModel):
     quantity: int
     requested_pickup_date: datetime
     required_delivery_date: Optional[datetime] = None
+    requested_at: Optional[datetime] = None
+    confirmed_at: Optional[datetime] = None
+    empty_pickup_open_at: Optional[datetime] = None
+    gate_cutoff_at: Optional[datetime] = None
     voyage_id: Optional[UUID] = None
-    priority: Optional[BookingPriority] = None
-    status: BookingStatus = BookingStatus.DRAFT
+    priority: Optional[BookingPriority] = BookingPriority.NORMAL
+    status: BookingStatus = BookingStatus.PENDING
 
 
 class BookingCreate(BookingBase):
@@ -32,6 +36,10 @@ class BookingUpdate(CamelModel):
     quantity: Optional[int] = None
     requested_pickup_date: Optional[datetime] = None
     required_delivery_date: Optional[datetime] = None
+    requested_at: Optional[datetime] = None
+    confirmed_at: Optional[datetime] = None
+    empty_pickup_open_at: Optional[datetime] = None
+    gate_cutoff_at: Optional[datetime] = None
     voyage_id: Optional[UUID] = None
     priority: Optional[BookingPriority] = None
     status: Optional[BookingStatus] = None

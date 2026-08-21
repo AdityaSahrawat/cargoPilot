@@ -78,6 +78,7 @@ class VoyageStatus(str, Enum):
 
 class BookingPriority(str, Enum):
     LOW = "LOW"
+    NORMAL = "NORMAL"
     STANDARD = "STANDARD"
     HIGH = "HIGH"
     URGENT = "URGENT"
@@ -85,7 +86,9 @@ class BookingPriority(str, Enum):
 
 class BookingStatus(str, Enum):
     DRAFT = "DRAFT"
+    PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
+    REJECTED = "REJECTED"
     IN_PROGRESS = "IN_PROGRESS"
     FULFILLED = "FULFILLED"
     CANCELLED = "CANCELLED"

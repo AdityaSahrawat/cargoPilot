@@ -1,0 +1,23 @@
+[
+  {
+    "imoNumber": "IMO9811000",
+    "name": "CargoPilot Alpha",
+    "vesselType": "ULCV",
+    "containerCapacity": 10000,
+    "status": "ACTIVE"
+  },
+  {
+    "imoNumber": "IMO9811012",
+    "name": "CargoPilot Voyager",
+    "vesselType": "CONTAINER_SHIP",
+    "containerCapacity": 14000,
+    "status": "ACTIVE"
+  },
+  {
+    "imoNumber": "IMO9811024",
+    "name": "Ocean Transporter",
+    "vesselType": "FEEDER",
+    "containerCapacity": 6500,
+    "status": "ACTIVE"
+  }
+]

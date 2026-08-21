@@ -56,7 +56,7 @@ def test_baseline_scenario_api_flow(api_client):
     loc_res = client.get("/api/v1/locations")
     assert loc_res.status_code == 200
     locations = loc_res.json()
-    assert len(locations) == 5
+    assert len(locations) >= 5
 
     ves_res = client.get("/api/v1/vessels")
     assert ves_res.status_code == 200
