@@ -20,6 +20,9 @@ class BookingBase(CamelModel):
     gate_cutoff_at: Optional[datetime] = None
     voyage_id: Optional[UUID] = None
     priority: Optional[BookingPriority] = BookingPriority.NORMAL
+    operational_criticality: Optional[BookingPriority] = BookingPriority.NORMAL
+    allowed_equipment_sources: Optional[str] = None
+    alternative_voyage_allowed: bool = False
     status: BookingStatus = BookingStatus.PENDING
 
 
@@ -42,6 +45,9 @@ class BookingUpdate(CamelModel):
     gate_cutoff_at: Optional[datetime] = None
     voyage_id: Optional[UUID] = None
     priority: Optional[BookingPriority] = None
+    operational_criticality: Optional[BookingPriority] = None
+    allowed_equipment_sources: Optional[str] = None
+    alternative_voyage_allowed: Optional[bool] = None
     status: Optional[BookingStatus] = None
 
 

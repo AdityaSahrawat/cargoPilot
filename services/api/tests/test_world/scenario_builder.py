@@ -20,6 +20,7 @@ from tests.test_world.reference_data import (
     load_reference_repositioning_commitments,
     load_reference_import_returns,
     load_reference_cost_parameters,
+    load_reference_bookings,
     load_reference_location_closures,
     load_reference_network_routes,
 )
@@ -37,20 +38,16 @@ class ScenarioBuilder:
         self.voyages: Dict[str, models.Voyage] = {}
         self.legs: Dict[str, models.VoyageLeg] = {}
         self.containers: Dict[str, models.Container] = {}
+        self.bookings: Dict[str, models.Booking] = {}
 
     def setup_base_world(self):
-        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Costs, Commitments, Expected Movements, Routes & Closures."""
-        # 1. Companies
+        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Costs, Bookings, Commitments, Expected Movements, Routes & Closures."""
+        # 1. Companies & Customer Contracts
         carrier = models.Company(
             name="Global Carrier Line",
             company_type=enums.CompanyType.CARRIER,
             is_self=True,
             hq_country="Singapore",
-        )
-        customer = models.Company(
-            name="Acme Trading Co",
-            company_type=enums.CompanyType.CUSTOMER,
-            is_self=False,
         )
         lessor = models.Company(
             name="Global Container Lease Ltd",
@@ -67,14 +64,64 @@ class ScenarioBuilder:
             company_type=enums.CompanyType.ALLIANCE_PARTNER,
             is_self=False,
         )
-        self.db.add_all([carrier, customer, lessor, lessor2, other_carrier])
+
+        cust1 = models.Company(
+            name="Acme Trading Co",
+            company_type=enums.CompanyType.CUSTOMER,
+            is_self=False,
+            customer_priority=enums.CustomerPriority.STRATEGIC,
+            leased_equipment_allowed=False,
+            equipment_source_policy="OWNED,CONTROLLED,REPOSITIONED",
+        )
+        cust2 = models.Company(
+            name="Global Freight Logistics",
+            company_type=enums.CompanyType.CUSTOMER,
+            is_self=False,
+            customer_priority=enums.CustomerPriority.STANDARD,
+            leased_equipment_allowed=True,
+            equipment_source_policy="OWNED,CONTROLLED,LEASED,REPOSITIONED",
+        )
+        cust3 = models.Company(
+            name="Pacific Maritime Shippers",
+            company_type=enums.CompanyType.CUSTOMER,
+            is_self=False,
+            customer_priority=enums.CustomerPriority.STANDARD,
+            leased_equipment_allowed=True,
+            equipment_source_policy="OWNED,CONTROLLED,LEASED,REPOSITIONED",
+        )
+        cust4 = models.Company(
+            name="Budget Export Lines",
+            company_type=enums.CompanyType.CUSTOMER,
+            is_self=False,
+            customer_priority=enums.CustomerPriority.LOW,
+            leased_equipment_allowed=False,
+            equipment_source_policy="OWNED,CONTROLLED",
+        )
+        cust5 = models.Company(
+            name="Apex Retail Global",
+            company_type=enums.CompanyType.CUSTOMER,
+            is_self=False,
+            customer_priority=enums.CustomerPriority.STRATEGIC,
+            leased_equipment_allowed=True,
+            equipment_source_policy="OWNED,CONTROLLED,LEASED,REPOSITIONED",
+        )
+
+        self.db.add_all([carrier, lessor, lessor2, other_carrier, cust1, cust2, cust3, cust4, cust5])
         self.db.commit()
         self.companies = {
             "carrier": carrier,
-            "customer": customer,
+            "customer": cust1,
             "lessor": lessor,
             "lessor2": lessor2,
             "other_carrier": other_carrier,
+            "CUST_001": cust1,
+            "CUST_002": cust2,
+            "CUST_003": cust3,
+            "CUST_004": cust4,
+            "CUST_005": cust5,
+            "CUST_01": cust1,
+            "CUST_02": cust2,
+            "CUST_03": cust3,
             "COMP_LESSOR_01": lessor,
             "COMP_LESSOR_02": lessor2,
         }
@@ -240,6 +287,42 @@ class ScenarioBuilder:
                 self.db.add(leg)
                 self.db.commit()
                 self.legs[lg["id"]] = leg
+
+        # Seed Bookings (BOOK_001 to BOOK_008)
+        bookings_data = load_reference_bookings()
+        for bk in bookings_data:
+            cust_c = self.companies.get(bk["customerCompanyId"], cust1)
+            orig_l = self.locations.get(bk["originUnlocode"])
+            dest_l = self.locations.get(bk["destinationUnlocode"])
+            vy_obj = list(self.voyages.values())[0] if self.voyages else None
+            req_pickup = datetime.fromisoformat(bk["requestedPickupDate"].replace("Z", "+00:00"))
+            req_deliv = datetime.fromisoformat(bk["requiredDeliveryDate"].replace("Z", "+00:00")) if bk.get("requiredDeliveryDate") else None
+            req_at = datetime.fromisoformat(bk["requestedAt"].replace("Z", "+00:00")) if bk.get("requestedAt") else None
+            pickup_open = datetime.fromisoformat(bk["emptyPickupOpenAt"].replace("Z", "+00:00")) if bk.get("emptyPickupOpenAt") else None
+            cutoff_at = datetime.fromisoformat(bk["gateCutoffAt"].replace("Z", "+00:00")) if bk.get("gateCutoffAt") else None
+
+            b_obj = models.Booking(
+                customer_company_id=cust_c.id,
+                carrier_company_id=carrier.id,
+                origin_location_id=orig_l.id if orig_l else list(self.locations.values())[0].id,
+                destination_location_id=dest_l.id if dest_l else list(self.locations.values())[1].id,
+                container_type=enums.ContainerType(bk["containerType"]),
+                quantity=bk["quantity"],
+                requested_pickup_date=req_pickup,
+                required_delivery_date=req_deliv,
+                requested_at=req_at,
+                empty_pickup_open_at=pickup_open,
+                gate_cutoff_at=cutoff_at,
+                voyage_id=vy_obj.id if vy_obj else None,
+                priority=enums.BookingPriority(bk["priority"]),
+                operational_criticality=enums.BookingPriority(bk.get("operationalCriticality", "NORMAL")),
+                allowed_equipment_sources=bk.get("allowedEquipmentSources"),
+                alternative_voyage_allowed=bk.get("alternativeVoyageAllowed", False),
+                status=enums.BookingStatus(bk["status"]),
+            )
+            self.db.add(b_obj)
+            self.db.commit()
+            self.bookings[bk["id"]] = b_obj
 
         # Seed Leases
         leases_data = load_reference_leases()

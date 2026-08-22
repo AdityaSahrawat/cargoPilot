@@ -3,7 +3,7 @@ from typing import Optional, List
 from sqlalchemy import String, Boolean, Enum as SQLEnum, ForeignKey, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
-from app.db.enums import CompanyType
+from app.db.enums import CompanyType, CustomerPriority
 from app.db.models.base import UUIDMixin, TimestampMixin
 
 
@@ -38,6 +38,15 @@ class Company(Base, UUIDMixin, TimestampMixin):
     is_self: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     hq_country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     alliance: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # Customer Priority & Contract Policy Fields
+    customer_priority: Mapped[Optional[CustomerPriority]] = mapped_column(
+        SQLEnum(CustomerPriority, native_enum=False),
+        default=CustomerPriority.STANDARD,
+        nullable=True,
+    )
+    leased_equipment_allowed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    equipment_source_policy: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Relationships
     company_locations: Mapped[List["CompanyLocation"]] = relationship(

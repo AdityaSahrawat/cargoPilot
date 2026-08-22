@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import Integer, DateTime, Enum as SQLEnum, ForeignKey, UUID
+from sqlalchemy import Integer, Boolean, String, DateTime, Enum as SQLEnum, ForeignKey, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 from app.db.enums import ContainerType, BookingPriority, BookingStatus
@@ -55,6 +55,14 @@ class Booking(Base, UUIDMixin, TimestampMixin):
         default=BookingPriority.NORMAL,
         nullable=True,
     )
+    operational_criticality: Mapped[Optional[BookingPriority]] = mapped_column(
+        SQLEnum(BookingPriority, native_enum=False),
+        default=BookingPriority.NORMAL,
+        nullable=True,
+    )
+    allowed_equipment_sources: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    alternative_voyage_allowed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     status: Mapped[BookingStatus] = mapped_column(
         SQLEnum(BookingStatus, native_enum=False),
         default=BookingStatus.PENDING,

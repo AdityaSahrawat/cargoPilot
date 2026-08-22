@@ -2,7 +2,7 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 from pydantic import ConfigDict
-from app.db.enums import CompanyType
+from app.db.enums import CompanyType, CustomerPriority
 from app.db.schemas.base import CamelModel
 
 
@@ -26,6 +26,9 @@ class CompanyBase(CamelModel):
     is_self: bool = False
     hq_country: Optional[str] = None
     alliance: Optional[str] = None
+    customer_priority: Optional[CustomerPriority] = CustomerPriority.STANDARD
+    leased_equipment_allowed: bool = True
+    equipment_source_policy: Optional[str] = None
 
 
 class CompanyCreate(CompanyBase):
@@ -38,6 +41,9 @@ class CompanyUpdate(CamelModel):
     is_self: Optional[bool] = None
     hq_country: Optional[str] = None
     alliance: Optional[str] = None
+    customer_priority: Optional[CustomerPriority] = None
+    leased_equipment_allowed: Optional[bool] = None
+    equipment_source_policy: Optional[str] = None
 
 
 class CompanyResponse(CompanyBase):

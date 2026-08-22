@@ -79,9 +79,14 @@ class VoyageStatus(str, Enum):
 class BookingPriority(str, Enum):
     LOW = "LOW"
     NORMAL = "NORMAL"
-    STANDARD = "STANDARD"
     HIGH = "HIGH"
-    URGENT = "URGENT"
+    CRITICAL = "CRITICAL"
+
+
+class CustomerPriority(str, Enum):
+    STRATEGIC = "STRATEGIC"
+    STANDARD = "STANDARD"
+    LOW = "LOW"
 
 
 class BookingStatus(str, Enum):
