@@ -8,7 +8,7 @@ from app.db.models.service import Service
 from app.db.models.voyage import Voyage, VoyagePortCall, VoyageLeg, ContainerVoyageAssignment
 from app.db.models.booking import Booking, EquipmentAssignment
 from app.db.models.lease import Lease
-from app.db.models.forecast import DemandForecast
+from app.db.models.forecast import DemandForecast, ImportReturnForecast
 from app.db.models.procurement import ProcurementOrder, ProcurementRecommendation
 from app.db.models.repositioning import RepositioningOption, RepositioningCommitment
 from app.db.models.optimization import (
@@ -42,6 +42,7 @@ __all__ = [
     "EquipmentAssignment",
     "Lease",
     "DemandForecast",
+    "ImportReturnForecast",
     "ProcurementOrder",
     "ProcurementRecommendation",
     "RepositioningOption",

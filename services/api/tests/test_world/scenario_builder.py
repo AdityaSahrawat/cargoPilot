@@ -18,6 +18,7 @@ from tests.test_world.reference_data import (
     load_reference_procurement_recommendations,
     load_reference_repositioning_options,
     load_reference_repositioning_commitments,
+    load_reference_import_returns,
     load_reference_location_closures,
     load_reference_network_routes,
 )
@@ -37,7 +38,7 @@ class ScenarioBuilder:
         self.containers: Dict[str, models.Container] = {}
 
     def setup_base_world(self):
-        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Commitments, Expected Movements, Routes & Closures."""
+        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Commitments, Expected Movements, Routes & Closures."""
         # 1. Companies
         carrier = models.Company(
             name="Global Carrier Line",
@@ -325,6 +326,21 @@ class ScenarioBuilder:
                     cost_per_unit=rc["costPerUnit"],
                 )
                 self.db.add(rc_obj)
+        self.db.commit()
+
+        # Seed Import Return Forecasts
+        import_returns_data = load_reference_import_returns()
+        for ir in import_returns_data:
+            ir_loc = self.locations.get(ir["unlocode"])
+            if ir_loc:
+                ir_obj = models.ImportReturnForecast(
+                    location_id=ir_loc.id,
+                    container_type=enums.ContainerType(ir["containerType"]),
+                    week=ir["week"],
+                    import_volume=ir.get("importVolume", 0),
+                    expected_empty_returns=ir["expectedEmptyReturns"],
+                )
+                self.db.add(ir_obj)
         self.db.commit()
 
         now = datetime.utcnow()

@@ -31,3 +31,17 @@ class DemandForecastResponse(DemandForecastBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class ImportReturnForecastBase(CamelModel):
+    location_id: UUID
+    container_type: ContainerType
+    week: str
+    import_volume: int
+    expected_empty_returns: int
+
+
+class ImportReturnForecastResponse(ImportReturnForecastBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime

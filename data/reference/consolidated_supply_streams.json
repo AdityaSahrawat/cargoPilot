@@ -1,0 +1,23 @@
+[
+  {
+    "unlocode": "INMAA-DEPOT-01",
+    "containerType": "40FT_DRY",
+    "weeklyStreams": [
+      {"week": "W1", "initialInventory": 70, "importReturns": 45, "repositioningInflows": 0, "leaseInflows": 0, "procurementDeliveries": 0, "grossSupply": 115, "commitmentsAndReserves": 30, "netAvailable": 85},
+      {"week": "W2", "initialInventory": 85, "importReturns": 48, "repositioningInflows": 0, "leaseInflows": 0, "procurementDeliveries": 0, "grossSupply": 133, "commitmentsAndReserves": 30, "netAvailable": 103},
+      {"week": "W3", "initialInventory": 103, "importReturns": 52, "repositioningInflows": 0, "leaseInflows": 0, "procurementDeliveries": 0, "grossSupply": 155, "commitmentsAndReserves": 30, "netAvailable": 125},
+      {"week": "W4", "initialInventory": 125, "importReturns": 55, "repositioningInflows": 7, "leaseInflows": 0, "procurementDeliveries": 0, "grossSupply": 187, "commitmentsAndReserves": 30, "netAvailable": 157},
+      {"week": "W8", "initialInventory": 200, "importReturns": 70, "repositioningInflows": 0, "leaseInflows": 0, "procurementDeliveries": 300, "grossSupply": 570, "commitmentsAndReserves": 30, "netAvailable": 540}
+    ]
+  },
+  {
+    "unlocode": "AEDXB-DEPOT-01",
+    "containerType": "40FT_DRY",
+    "weeklyStreams": [
+      {"week": "W1", "initialInventory": 20, "importReturns": 25, "repositioningInflows": 0, "leaseInflows": 0, "procurementDeliveries": 0, "grossSupply": 45, "commitmentsAndReserves": 25, "netAvailable": 20},
+      {"week": "W2", "initialInventory": 20, "importReturns": 30, "repositioningInflows": 0, "leaseInflows": 0, "procurementDeliveries": 0, "grossSupply": 50, "commitmentsAndReserves": 25, "netAvailable": 25},
+      {"week": "W3", "initialInventory": 25, "importReturns": 38, "repositioningInflows": 10, "leaseInflows": 0, "procurementDeliveries": 0, "grossSupply": 73, "commitmentsAndReserves": 25, "netAvailable": 48},
+      {"week": "W8", "initialInventory": 80, "importReturns": 47, "repositioningInflows": 0, "leaseInflows": 0, "procurementDeliveries": 200, "grossSupply": 327, "commitmentsAndReserves": 25, "netAvailable": 302}
+    ]
+  }
+]

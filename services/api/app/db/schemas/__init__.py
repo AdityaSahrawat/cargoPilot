@@ -85,6 +85,8 @@ from app.db.schemas.forecast import (
     DemandForecastCreate,
     DemandForecastUpdate,
     DemandForecastResponse,
+    ImportReturnForecastBase,
+    ImportReturnForecastResponse,
 )
 from app.db.schemas.optimization import (
     OptimizationRunRequest,

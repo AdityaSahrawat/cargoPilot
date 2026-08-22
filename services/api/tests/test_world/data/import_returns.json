@@ -1,16 +1,22 @@
 [
-  {
-    "id": "IR001",
-    "unlocode": "INMAA",
-    "containerType": "40FT_DRY",
-    "week": "2026-W36",
-    "expectedImportReturns": 8
-  },
-  {
-    "id": "IR002",
-    "unlocode": "AEDXB",
-    "containerType": "40FT_DRY",
-    "week": "2026-W36",
-    "expectedImportReturns": 12
-  }
+  {"id": "IR_DXB_W1", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W1", "importVolume": 35, "expectedEmptyReturns": 25},
+  {"id": "IR_DXB_W2", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W2", "importVolume": 40, "expectedEmptyReturns": 30},
+  {"id": "IR_DXB_W3", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W3", "importVolume": 50, "expectedEmptyReturns": 38},
+  {"id": "IR_DXB_W4", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W4", "importVolume": 55, "expectedEmptyReturns": 42},
+  {"id": "IR_DXB_W5", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W5", "importVolume": 45, "expectedEmptyReturns": 34},
+  {"id": "IR_DXB_W6", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W6", "importVolume": 60, "expectedEmptyReturns": 46},
+  {"id": "IR_DXB_W7", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W7", "importVolume": 65, "expectedEmptyReturns": 50},
+  {"id": "IR_DXB_W8", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W8", "importVolume": 60, "expectedEmptyReturns": 47},
+  {"id": "IR_DXB_W9", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W9", "importVolume": 70, "expectedEmptyReturns": 55},
+  {"id": "IR_DXB_W10", "unlocode": "AEDXB-DEPOT-01", "containerType": "40FT_DRY", "week": "W10", "importVolume": 75, "expectedEmptyReturns": 59},
+  {"id": "IR_MAA_W1", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W1", "importVolume": 60, "expectedEmptyReturns": 45},
+  {"id": "IR_MAA_W2", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W2", "importVolume": 65, "expectedEmptyReturns": 48},
+  {"id": "IR_MAA_W3", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W3", "importVolume": 70, "expectedEmptyReturns": 52},
+  {"id": "IR_MAA_W4", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W4", "importVolume": 70, "expectedEmptyReturns": 55},
+  {"id": "IR_MAA_W5", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W5", "importVolume": 75, "expectedEmptyReturns": 58},
+  {"id": "IR_MAA_W6", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W6", "importVolume": 80, "expectedEmptyReturns": 62},
+  {"id": "IR_MAA_W7", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W7", "importVolume": 85, "expectedEmptyReturns": 65},
+  {"id": "IR_MAA_W8", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W8", "importVolume": 90, "expectedEmptyReturns": 70},
+  {"id": "IR_MAA_W9", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W9", "importVolume": 90, "expectedEmptyReturns": 72},
+  {"id": "IR_MAA_W10", "unlocode": "INMAA-DEPOT-01", "containerType": "40FT_DRY", "week": "W10", "importVolume": 95, "expectedEmptyReturns": 75}
 ]

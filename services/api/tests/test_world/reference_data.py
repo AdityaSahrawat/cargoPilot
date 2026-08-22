@@ -113,6 +113,12 @@ def load_reference_import_returns() -> List[Dict[str, Any]]:
         return json.load(f)
 
 
+def load_reference_consolidated_supply_streams() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "consolidated_supply_streams.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_reference_location_closures() -> List[Dict[str, Any]]:
     file_path = os.path.join(DATA_DIR, "location_closure_windows.json")
     with open(file_path, "r", encoding="utf-8") as f:
