@@ -52,3 +52,24 @@ class ImportReturnForecast(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     location: Mapped["Location"] = relationship("Location")
+
+
+class PriorPeriodBacklog(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "prior_period_backlogs"
+
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    container_type: Mapped[ContainerType] = mapped_column(
+        SQLEnum(ContainerType, native_enum=False),
+        nullable=False,
+    )
+    demand_stream_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # CONFIRMED or FORECAST
+    week: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    backlog_age_weeks: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+    # Relationships
+    location: Mapped["Location"] = relationship("Location")

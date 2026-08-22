@@ -45,3 +45,18 @@ class ImportReturnForecastResponse(ImportReturnForecastBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class PriorPeriodBacklogBase(CamelModel):
+    location_id: UUID
+    container_type: ContainerType
+    demand_stream_type: str
+    week: str
+    quantity: int
+    backlog_age_weeks: int = 1
+
+
+class PriorPeriodBacklogResponse(PriorPeriodBacklogBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime

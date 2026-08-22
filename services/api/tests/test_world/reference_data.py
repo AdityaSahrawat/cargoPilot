@@ -125,6 +125,12 @@ def load_reference_cost_parameters() -> List[Dict[str, Any]]:
         return json.load(f)
 
 
+def load_reference_prior_period_backlogs() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "prior_period_backlogs.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_reference_location_closures() -> List[Dict[str, Any]]:
     file_path = os.path.join(DATA_DIR, "location_closure_windows.json")
     with open(file_path, "r", encoding="utf-8") as f:

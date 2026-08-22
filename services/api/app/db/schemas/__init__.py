@@ -92,6 +92,8 @@ from app.db.schemas.forecast import (
     DemandForecastResponse,
     ImportReturnForecastBase,
     ImportReturnForecastResponse,
+    PriorPeriodBacklogBase,
+    PriorPeriodBacklogResponse,
 )
 from app.db.schemas.optimization import (
     OptimizationRunRequest,

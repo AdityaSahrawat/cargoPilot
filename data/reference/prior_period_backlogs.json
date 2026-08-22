@@ -1,0 +1,20 @@
+[
+  {
+    "id": "BACKLOG_CONFIRMED_01",
+    "unlocode": "INMAA-DEPOT-01",
+    "containerType": "40FT_DRY",
+    "demandStreamType": "CONFIRMED",
+    "week": "W1",
+    "quantity": 5,
+    "backlogAgeWeeks": 1
+  },
+  {
+    "id": "BACKLOG_FORECAST_01",
+    "unlocode": "INMAA-DEPOT-01",
+    "containerType": "40FT_DRY",
+    "demandStreamType": "FORECAST",
+    "week": "W1",
+    "quantity": 8,
+    "backlogAgeWeeks": 2
+  }
+]

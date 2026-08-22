@@ -21,6 +21,7 @@ from tests.test_world.reference_data import (
     load_reference_import_returns,
     load_reference_cost_parameters,
     load_reference_bookings,
+    load_reference_prior_period_backlogs,
     load_reference_location_closures,
     load_reference_network_routes,
 )
@@ -41,7 +42,7 @@ class ScenarioBuilder:
         self.bookings: Dict[str, models.Booking] = {}
 
     def setup_base_world(self):
-        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Costs, Bookings, Commitments, Expected Movements, Routes & Closures."""
+        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Costs, Bookings, Backlogs, Commitments, Expected Movements, Routes & Closures."""
         # 1. Companies & Customer Contracts
         carrier = models.Company(
             name="Global Carrier Line",
@@ -438,6 +439,22 @@ class ScenarioBuilder:
                     expected_empty_returns=ir["expectedEmptyReturns"],
                 )
                 self.db.add(ir_obj)
+        self.db.commit()
+
+        # Seed Prior Period Backlogs
+        backlogs_data = load_reference_prior_period_backlogs()
+        for bg in backlogs_data:
+            bg_loc = self.locations.get(bg["unlocode"])
+            if bg_loc:
+                bg_obj = models.PriorPeriodBacklog(
+                    location_id=bg_loc.id,
+                    container_type=enums.ContainerType(bg["containerType"]),
+                    demand_stream_type=bg["demandStreamType"],
+                    week=bg["week"],
+                    quantity=bg["quantity"],
+                    backlog_age_weeks=bg.get("backlogAgeWeeks", 1),
+                )
+                self.db.add(bg_obj)
         self.db.commit()
 
         now = datetime.utcnow()
