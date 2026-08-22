@@ -105,6 +105,19 @@ class ContainerEventType(str, Enum):
     DAMAGED = "DAMAGED"
 
 
+class CommitmentType(str, Enum):
+    BOOKING = "BOOKING"
+    VOYAGE = "VOYAGE"
+    MAINTENANCE = "MAINTENANCE"
+    LEASE_RETURN = "LEASE_RETURN"
+
+
+class CommitmentStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    FULFILLED = "FULFILLED"
+    CANCELLED = "CANCELLED"
+
+
 class OptimizationStatus(str, Enum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"

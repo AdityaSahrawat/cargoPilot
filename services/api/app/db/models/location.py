@@ -1,5 +1,6 @@
+import uuid
 from typing import Optional, List
-from sqlalchemy import String, Integer, Float, Boolean, Enum as SQLEnum
+from sqlalchemy import String, Integer, Float, Boolean, DateTime, ForeignKey, Enum as SQLEnum, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 from app.db.enums import LocationType, OperationalStatus
@@ -21,6 +22,15 @@ class Location(Base, UUIDMixin, TimestampMixin):
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     storage_capacity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     repair_capability: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    parent_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    operating_hours: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    pickup_hours: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    return_hours: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    closed_days: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     operational_status: Mapped[OperationalStatus] = mapped_column(
         SQLEnum(OperationalStatus, native_enum=False),
         default=OperationalStatus.ACTIVE,
@@ -28,6 +38,9 @@ class Location(Base, UUIDMixin, TimestampMixin):
     )
 
     # Relationships
+    parent_location: Mapped[Optional["Location"]] = relationship(
+        "Location", remote_side="Location.id", backref="child_locations"
+    )
     company_locations: Mapped[List["CompanyLocation"]] = relationship(
         "CompanyLocation", back_populates="location", cascade="all, delete-orphan"
     )
@@ -63,4 +76,51 @@ class Location(Base, UUIDMixin, TimestampMixin):
     )
     optimization_demands: Mapped[List["OptimizationDemand"]] = relationship(
         "OptimizationDemand", back_populates="location"
+    )
+    closure_windows: Mapped[List["LocationClosureWindow"]] = relationship(
+        "LocationClosureWindow", back_populates="location", cascade="all, delete-orphan"
+    )
+
+
+class LocationClosureWindow(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "location_closure_windows"
+
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    start_time: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_time: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Relationships
+    location: Mapped["Location"] = relationship("Location", back_populates="closure_windows")
+
+
+class NetworkRoute(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "network_routes"
+
+    from_location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    to_location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    transport_mode: Mapped[str] = mapped_column(String(50), nullable=False, default="TRUCK")
+    lead_time_days: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    cost_per_container: Mapped[float] = mapped_column(Float, nullable=False, default=1000.0)
+    daily_capacity: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+    is_connected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Relationships
+    from_location: Mapped["Location"] = relationship(
+        "Location", foreign_keys=[from_location_id]
+    )
+    to_location: Mapped["Location"] = relationship(
+        "Location", foreign_keys=[to_location_id]
     )

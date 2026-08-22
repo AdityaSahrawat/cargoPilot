@@ -10,8 +10,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from main import app
 from app.db.database import Base, get_test_db, get_db
+from app.db import models, enums, schemas
+from app.optimization.input_builder import OptimizationInputBuilder
 from tests.test_world.validator import WorldValidator
-from app.db import schemas
 
 
 @pytest.fixture(scope="function")
@@ -80,6 +81,46 @@ def test_baseline_scenario_api_flow(api_client):
     validator = WorldValidator(db)
     validator.validate_plan_capacity(plan_obj)
     validator.validate_non_negative_quantities(plan_obj)
+
+
+def test_container_usability_filtering(api_client):
+    """Test 4: Verify usability filtering logic excludes non-controlled, committed, in-transit, repair, & customs hold containers."""
+    client, db = api_client
+    client.post("/api/v1/scenarios/baseline/reset")
+
+    builder = OptimizationInputBuilder(db)
+
+    # Get Chennai location
+    chennai = db.query(models.Location).filter(models.Location.unlocode == "INMAA").first()
+    assert chennai is not None
+
+    # Get usable 40FT_DRY containers at Chennai
+    usable_40gp = builder.get_usable_containers(
+        location_id=chennai.id,
+        container_type=enums.ContainerType.DRY_40FT,
+    )
+    usable_numbers = [c.container_number for c in usable_40gp]
+
+    # CONT_001 and CONT_002 must be usable
+    assert "MSCU9900001" in usable_numbers
+    assert "MSCU9900002" in usable_numbers
+
+    # CONT_003 (controlled_by_carrier=False), CONT_004 (committed COM_001), CONT_005 (IN_TRANSIT), CONT_006 (UNDER_REPAIR) must NOT be usable
+    assert "MSCU9900003" not in usable_numbers
+    assert "MSCU9900004" not in usable_numbers
+    assert "MSCU9900005" not in usable_numbers
+    assert "MSCU9900006" not in usable_numbers
+
+    # Check 20FT_DRY at Chennai
+    usable_20gp = builder.get_usable_containers(
+        location_id=chennai.id,
+        container_type=enums.ContainerType.DRY_20FT,
+    )
+    usable_20gp_numbers = [c.container_number for c in usable_20gp]
+
+    # CONT_007 is usable, CONT_008 (customs_hold=True) is NOT usable
+    assert "MSCU9900007" in usable_20gp_numbers
+    assert "MSCU9900008" not in usable_20gp_numbers
 
 
 def test_capacity_shortage_scenario_api_flow(api_client):

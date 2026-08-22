@@ -1,7 +1,14 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from app.db.enums import ContainerType, ContainerStatus, ContainerCondition, ContainerEventType
+from app.db.enums import (
+    ContainerType,
+    ContainerStatus,
+    ContainerCondition,
+    ContainerEventType,
+    CommitmentType,
+    CommitmentStatus,
+)
 from app.db.schemas.base import CamelModel
 
 
@@ -13,6 +20,8 @@ class ContainerBase(CamelModel):
     current_voyage_id: Optional[UUID] = None
     status: ContainerStatus = ContainerStatus.AVAILABLE
     condition: ContainerCondition = ContainerCondition.CARGO_WORTHY
+    controlled_by_carrier: bool = True
+    customs_hold: bool = False
     available_from: datetime
     last_movement_at: Optional[datetime] = None
 
@@ -29,6 +38,8 @@ class ContainerUpdate(CamelModel):
     current_voyage_id: Optional[UUID] = None
     status: Optional[ContainerStatus] = None
     condition: Optional[ContainerCondition] = None
+    controlled_by_carrier: Optional[bool] = None
+    customs_hold: Optional[bool] = None
     available_from: Optional[datetime] = None
     last_movement_at: Optional[datetime] = None
 
@@ -42,6 +53,25 @@ class ContainerResponse(ContainerBase):
 class ContainerListResponse(CamelModel):
     data: List[ContainerResponse]
     total: int
+
+
+class ContainerCommitmentBase(CamelModel):
+    container_id: UUID
+    commitment_type: CommitmentType
+    reference_id: Optional[str] = None
+    required_location_id: Optional[UUID] = None
+    required_at: Optional[datetime] = None
+    status: CommitmentStatus = CommitmentStatus.ACTIVE
+
+
+class ContainerCommitmentCreate(ContainerCommitmentBase):
+    pass
+
+
+class ContainerCommitmentResponse(ContainerCommitmentBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
 
 
 class ContainerEventBase(CamelModel):

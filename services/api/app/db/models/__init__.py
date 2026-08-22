@@ -1,8 +1,8 @@
 from app.db.database import Base
 from app.db.models.base import TimestampMixin, UUIDMixin
 from app.db.models.company import Company, CompanyLocation
-from app.db.models.location import Location
-from app.db.models.container import Container, ContainerEvent
+from app.db.models.location import Location, LocationClosureWindow, NetworkRoute
+from app.db.models.container import Container, ContainerEvent, ContainerCommitment
 from app.db.models.vessel import Vessel
 from app.db.models.service import Service
 from app.db.models.voyage import Voyage, VoyagePortCall, VoyageLeg
@@ -24,8 +24,11 @@ __all__ = [
     "Company",
     "CompanyLocation",
     "Location",
+    "LocationClosureWindow",
+    "NetworkRoute",
     "Container",
     "ContainerEvent",
+    "ContainerCommitment",
     "Vessel",
     "Service",
     "Voyage",

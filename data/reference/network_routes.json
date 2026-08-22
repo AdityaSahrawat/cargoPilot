@@ -1,0 +1,68 @@
+[
+  {
+    "id": "R001",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "INMAA",
+    "transportMode": "TRUCK",
+    "leadTimeDays": 1,
+    "costPerContainer": 1500.0,
+    "dailyCapacity": 50,
+    "isConnected": true,
+    "notes": "Local drayage from Chennai Main Depot to Chennai Port"
+  },
+  {
+    "id": "R002",
+    "fromUnlocode": "INMAA-DEPOT-02",
+    "toUnlocode": "INMAA",
+    "transportMode": "TRUCK",
+    "leadTimeDays": 1,
+    "costPerContainer": 1800.0,
+    "dailyCapacity": 30,
+    "isConnected": true,
+    "notes": "Local drayage from Chennai Secondary Depot to Chennai Port"
+  },
+  {
+    "id": "R003",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "INMAA-DEPOT-02",
+    "transportMode": "TRUCK",
+    "leadTimeDays": 1,
+    "costPerContainer": 800.0,
+    "dailyCapacity": 25,
+    "isConnected": true,
+    "notes": "Local inter-depot transfer within Chennai"
+  },
+  {
+    "id": "R004",
+    "fromUnlocode": "INMAA",
+    "toUnlocode": "AEDXB",
+    "transportMode": "VESSEL",
+    "leadTimeDays": 5,
+    "costPerContainer": 3000.0,
+    "dailyCapacity": 500,
+    "isConnected": true,
+    "notes": "Vessel ocean route from Chennai Port to Jebel Ali Port (VOY_001)"
+  },
+  {
+    "id": "R005",
+    "fromUnlocode": "AEDXB",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "transportMode": "TRUCK",
+    "leadTimeDays": 1,
+    "costPerContainer": 1500.0,
+    "dailyCapacity": 50,
+    "isConnected": true,
+    "notes": "Local drayage from Jebel Ali Port to Dubai Main Depot"
+  },
+  {
+    "id": "R006",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "transportMode": "DIRECT",
+    "leadTimeDays": 0,
+    "costPerContainer": 0.0,
+    "dailyCapacity": 0,
+    "isConnected": false,
+    "notes": "No direct depot-to-depot international road route allowed"
+  }
+]

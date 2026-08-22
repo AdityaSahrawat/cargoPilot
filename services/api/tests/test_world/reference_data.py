@@ -17,6 +17,18 @@ def load_reference_vessels() -> List[Dict[str, Any]]:
         return json.load(f)
 
 
+def load_reference_containers() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "containers.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_container_commitments() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "container_commitments.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_reference_bookings() -> List[Dict[str, Any]]:
     file_path = os.path.join(DATA_DIR, "bookings.json")
     with open(file_path, "r", encoding="utf-8") as f:
@@ -31,5 +43,17 @@ def load_reference_demand_forecasts() -> List[Dict[str, Any]]:
 
 def load_reference_import_returns() -> List[Dict[str, Any]]:
     file_path = os.path.join(DATA_DIR, "import_returns.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_location_closures() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "location_closure_windows.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_network_routes() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "network_routes.json")
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)

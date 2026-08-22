@@ -1,0 +1,11 @@
+[
+  {
+    "id": "COM_001",
+    "containerId": "CONT_004",
+    "commitmentType": "VOYAGE",
+    "referenceId": "VOY_004",
+    "requiredUnlocode": "INMAA",
+    "requiredAt": "2026-08-26T12:00:00Z",
+    "status": "ACTIVE"
+  }
+]

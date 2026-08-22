@@ -1,13 +1,20 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from sqlalchemy import String, DateTime, Enum as SQLEnum, ForeignKey, JSON, UUID
+from sqlalchemy import String, Boolean, DateTime, Enum as SQLEnum, ForeignKey, JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
-from app.db.enums import ContainerType, ContainerStatus, ContainerCondition, ContainerEventType
+from app.db.enums import (
+    ContainerType,
+    ContainerStatus,
+    ContainerCondition,
+    ContainerEventType,
+    CommitmentType,
+    CommitmentStatus,
+)
 from app.db.models.base import UUIDMixin, TimestampMixin
 
- 
+
 class Container(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "containers"
 
@@ -41,6 +48,8 @@ class Container(Base, UUIDMixin, TimestampMixin):
         default=ContainerCondition.CARGO_WORTHY,
         nullable=False,
     )
+    controlled_by_carrier: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    customs_hold: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     available_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, nullable=False
     )
@@ -58,6 +67,39 @@ class Container(Base, UUIDMixin, TimestampMixin):
     events: Mapped[List["ContainerEvent"]] = relationship(
         "ContainerEvent", back_populates="container", order_by="ContainerEvent.timestamp"
     )
+    commitments: Mapped[List["ContainerCommitment"]] = relationship(
+        "ContainerCommitment", back_populates="container"
+    )
+
+
+class ContainerCommitment(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "container_commitments"
+
+    container_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("containers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    commitment_type: Mapped[CommitmentType] = mapped_column(
+        SQLEnum(CommitmentType, native_enum=False),
+        nullable=False,
+    )
+    reference_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    required_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    required_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[CommitmentStatus] = mapped_column(
+        SQLEnum(CommitmentStatus, native_enum=False),
+        default=CommitmentStatus.ACTIVE,
+        nullable=False,
+    )
+
+    # Relationships
+    container: Mapped["Container"] = relationship("Container", back_populates="commitments")
+    required_location: Mapped[Optional["Location"]] = relationship("Location")
 
 
 class ContainerEvent(Base, UUIDMixin, TimestampMixin):

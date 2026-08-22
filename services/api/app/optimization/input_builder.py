@@ -12,6 +12,42 @@ class OptimizationInputBuilder:
     def __init__(self, db: Session):
         self.db = db
 
+    def get_usable_containers(
+        self,
+        location_id: Optional[uuid.UUID] = None,
+        container_type: Optional[enums.ContainerType] = None,
+    ) -> List[models.Container]:
+        """Returns physical containers that are genuinely free & usable for allocation.
+        Filters out:
+        - Non-AVAILABLE status (e.g. IN_TRANSIT, UNDER_REPAIR, ASSIGNED)
+        - Equipment controlled by another carrier (controlled_by_carrier = False)
+        - Containers under customs hold (customs_hold = True)
+        - Containers with active operational commitments (container_commitments)
+        """
+        query = self.db.query(models.Container).filter(
+            models.Container.status == enums.ContainerStatus.AVAILABLE,
+            models.Container.controlled_by_carrier == True,
+            models.Container.customs_hold == False,
+        )
+
+        if location_id:
+            query = query.filter(models.Container.current_location_id == location_id)
+        if container_type:
+            query = query.filter(models.Container.container_type == container_type)
+
+        containers = query.all()
+
+        # Filter out containers with active commitments
+        usable = []
+        for c in containers:
+            has_active_commitment = any(
+                comm.status == enums.CommitmentStatus.ACTIVE for comm in c.commitments
+            )
+            if not has_active_commitment:
+                usable.append(c)
+
+        return usable
+
     def build_input(
         self,
         company_id: uuid.UUID,
