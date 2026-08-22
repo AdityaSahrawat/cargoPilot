@@ -11,6 +11,7 @@ from app.db.models.lease import Lease
 from app.db.models.forecast import DemandForecast, ImportReturnForecast
 from app.db.models.procurement import ProcurementOrder, ProcurementRecommendation
 from app.db.models.repositioning import RepositioningOption, RepositioningCommitment
+from app.db.models.cost import CostParameter
 from app.db.models.optimization import (
     OptimizationRun,
     OptimizationReposition,
@@ -47,6 +48,7 @@ __all__ = [
     "ProcurementRecommendation",
     "RepositioningOption",
     "RepositioningCommitment",
+    "CostParameter",
     "OptimizationRun",
     "OptimizationReposition",
     "OptimizationLease",

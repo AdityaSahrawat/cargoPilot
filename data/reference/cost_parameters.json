@@ -1,0 +1,122 @@
+[
+  {
+    "id": "COST_001",
+    "parameterKey": "shortage_penalty_base_confirmed",
+    "category": "SHORTAGE",
+    "value": 15000.0,
+    "unit": "INR_PER_CONTAINER_PER_WEEK",
+    "description": "Base economic shortage penalty per container per week for confirmed bookings"
+  },
+  {
+    "id": "COST_002",
+    "parameterKey": "shortage_penalty_base_forecast",
+    "category": "SHORTAGE",
+    "value": 6000.0,
+    "unit": "INR_PER_CONTAINER_PER_WEEK",
+    "description": "Base economic shortage penalty per container per week for unconfirmed forecast demand"
+  },
+  {
+    "id": "COST_003",
+    "parameterKey": "priority_multiplier_low",
+    "category": "PRIORITY",
+    "value": 0.75,
+    "unit": "MULTIPLIER",
+    "description": "Shortage penalty multiplier for LOW priority bookings"
+  },
+  {
+    "id": "COST_004",
+    "parameterKey": "priority_multiplier_normal",
+    "category": "PRIORITY",
+    "value": 1.00,
+    "unit": "MULTIPLIER",
+    "description": "Shortage penalty multiplier for NORMAL priority bookings"
+  },
+  {
+    "id": "COST_005",
+    "parameterKey": "priority_multiplier_high",
+    "category": "PRIORITY",
+    "value": 1.50,
+    "unit": "MULTIPLIER",
+    "description": "Shortage penalty multiplier for HIGH priority bookings"
+  },
+  {
+    "id": "COST_006",
+    "parameterKey": "priority_multiplier_critical",
+    "category": "PRIORITY",
+    "value": 2.50,
+    "unit": "MULTIPLIER",
+    "description": "Shortage penalty multiplier for CRITICAL priority bookings"
+  },
+  {
+    "id": "COST_007",
+    "parameterKey": "holding_cost_default",
+    "category": "HOLDING",
+    "value": 40.0,
+    "unit": "INR_PER_CONTAINER_PER_WEEK",
+    "description": "Default idle holding cost sitting at depot per container per week"
+  },
+  {
+    "id": "COST_008",
+    "parameterKey": "holding_cost_dubai",
+    "category": "HOLDING",
+    "value": 45.0,
+    "unit": "INR_PER_CONTAINER_PER_WEEK",
+    "description": "Idle holding cost sitting at Dubai depots per container per week"
+  },
+  {
+    "id": "COST_009",
+    "parameterKey": "depot_handling_cost",
+    "category": "HANDLING",
+    "value": 1000.0,
+    "unit": "INR_PER_CONTAINER",
+    "description": "Standard depot handling cost per container move"
+  },
+  {
+    "id": "COST_010",
+    "parameterKey": "empty_gate_movement_cost",
+    "category": "HANDLING",
+    "value": 500.0,
+    "unit": "INR_PER_CONTAINER",
+    "description": "Gate movement fee per empty container"
+  },
+  {
+    "id": "COST_011",
+    "parameterKey": "repositioning_documentation_cost",
+    "category": "HANDLING",
+    "value": 250.0,
+    "unit": "INR_PER_CONTAINER",
+    "description": "Documentation & admin fee per repositioning movement"
+  },
+  {
+    "id": "COST_012",
+    "parameterKey": "lease_setup_fee",
+    "category": "LEASING",
+    "value": 2000.0,
+    "unit": "INR_PER_LEASE",
+    "description": "Administrative setup fee per master lease agreement"
+  },
+  {
+    "id": "COST_013",
+    "parameterKey": "early_return_fee",
+    "category": "LEASING",
+    "value": 2000.0,
+    "unit": "INR_PER_CONTAINER",
+    "description": "Penalty fee per container for early lease termination"
+  },
+  {
+    "id": "COST_014",
+    "parameterKey": "scrap_processing_cost",
+    "category": "DISPOSAL",
+    "value": 5000.0,
+    "unit": "INR_PER_CONTAINER",
+    "description": "Processing fee for scrapping unserviceable equipment"
+  },
+  {
+    "id": "COST_015",
+    "parameterKey": "physical_disposal_cost",
+    "category": "DISPOSAL",
+    "value": 8000.0,
+    "unit": "INR_PER_CONTAINER",
+    "description": "Environmental & physical disposal cost for destroyed units"
+  }
+]

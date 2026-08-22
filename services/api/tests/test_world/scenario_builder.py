@@ -19,6 +19,7 @@ from tests.test_world.reference_data import (
     load_reference_repositioning_options,
     load_reference_repositioning_commitments,
     load_reference_import_returns,
+    load_reference_cost_parameters,
     load_reference_location_closures,
     load_reference_network_routes,
 )
@@ -38,7 +39,7 @@ class ScenarioBuilder:
         self.containers: Dict[str, models.Container] = {}
 
     def setup_base_world(self):
-        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Commitments, Expected Movements, Routes & Closures."""
+        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Costs, Commitments, Expected Movements, Routes & Closures."""
         # 1. Companies
         carrier = models.Company(
             name="Global Carrier Line",
@@ -134,6 +135,19 @@ class ScenarioBuilder:
                     is_connected=r.get("isConnected", True),
                 )
                 self.db.add(nr)
+        self.db.commit()
+
+        # Seed Cost Parameters
+        cost_params_data = load_reference_cost_parameters()
+        for cp in cost_params_data:
+            cp_obj = models.CostParameter(
+                parameter_key=cp["parameterKey"],
+                category=cp["category"],
+                value=cp["value"],
+                unit=cp["unit"],
+                description=cp.get("description"),
+            )
+            self.db.add(cp_obj)
         self.db.commit()
 
         # 3. Reference Vessels
