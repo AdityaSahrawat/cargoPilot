@@ -8,6 +8,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-21T00:00:00Z"
   },
@@ -20,6 +21,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-21T00:00:00Z"
   },
@@ -32,6 +34,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": false,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_02",
     "availableFrom": "2026-08-21T00:00:00Z"
   },
@@ -44,6 +47,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-21T00:00:00Z",
     "commitmentRef": "COM_001"
@@ -57,6 +61,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-25T00:00:00Z"
   },
@@ -69,6 +74,7 @@
     "condition": "REPAIRABLE",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-29T00:00:00Z"
   },
@@ -81,6 +87,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-21T00:00:00Z"
   },
@@ -93,6 +100,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": true,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-27T00:00:00Z"
   },
@@ -105,6 +113,7 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-21T00:00:00Z"
   },
@@ -117,8 +126,74 @@
     "condition": "CARGO_WORTHY",
     "customsHold": false,
     "controlledByCarrier": true,
+    "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-21T00:00:00Z",
     "assignmentRef": "B012"
+  },
+  {
+    "id": "CONT_011",
+    "containerNumber": "MSCU9900011",
+    "containerType": "40FT_DRY",
+    "unlocode": "INMAA",
+    "status": "AVAILABLE",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": true,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-08-21T00:00:00Z"
+  },
+  {
+    "id": "CONT_012",
+    "containerNumber": "MSCU9900012",
+    "containerType": "40FT_DRY",
+    "unlocode": "AEDXB",
+    "status": "AVAILABLE",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": true,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-08-21T00:00:00Z"
+  },
+  {
+    "id": "CONT_013",
+    "containerNumber": "MSCU9900013",
+    "containerType": "40FT_DRY",
+    "unlocode": "INMAA-DEPOT-01",
+    "status": "AVAILABLE",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-08-21T00:00:00Z"
+  },
+  {
+    "id": "CONT_014",
+    "containerNumber": "MSCU9900014",
+    "containerType": "40FT_DRY",
+    "unlocode": "AEDXB",
+    "status": "IN_TRANSIT",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-09-07T00:00:00Z"
+  },
+  {
+    "id": "CONT_015",
+    "containerNumber": "MSCU9900015",
+    "containerType": "40FT_DRY",
+    "unlocode": "AEDXB",
+    "status": "ON_HOLD",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": null
   }
 ]

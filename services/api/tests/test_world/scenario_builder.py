@@ -6,8 +6,13 @@ from app.db import models, enums
 from tests.test_world.reference_data import (
     load_reference_ports,
     load_reference_vessels,
+    load_reference_services,
+    load_reference_voyages,
+    load_reference_voyage_legs,
     load_reference_containers,
     load_reference_container_commitments,
+    load_reference_container_assignments,
+    load_reference_expected_container_movements,
     load_reference_location_closures,
     load_reference_network_routes,
 )
@@ -27,7 +32,7 @@ class ScenarioBuilder:
         self.containers: Dict[str, models.Container] = {}
 
     def setup_base_world(self):
-        """Seed 3 Companies, Ports, Vessels, Services, Containers, Commitments, Routes & Closures."""
+        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Commitments, Expected Movements, Routes & Closures."""
         # 1. Companies
         carrier = models.Company(
             name="Global Carrier Line",
@@ -118,6 +123,7 @@ class ScenarioBuilder:
 
         # 3. Reference Vessels
         vessels_data = load_reference_vessels()
+        vessel_by_imo = {}
         for v in vessels_data:
             vessel = models.Vessel(
                 imo_number=v["imoNumber"],
@@ -131,79 +137,89 @@ class ScenarioBuilder:
             self.db.add(vessel)
             self.db.commit()
             self.vessels[v["imoNumber"]] = vessel
+            vessel_by_imo[v["imoNumber"]] = vessel
 
         # 4. Service & Voyages
-        svc_ame = models.Service(
-            name="Asia-Middle East Express",
-            operator_company_id=carrier.id,
-            status=enums.ServiceStatus.ACTIVE,
-        )
-        self.db.add(svc_ame)
-        self.db.commit()
-        self.services["AME"] = svc_ame
+        services_data = load_reference_services()
+        service_by_id = {}
+        for s in services_data:
+            svc = models.Service(
+                name=s["name"],
+                operator_company_id=carrier.id,
+                status=enums.ServiceStatus(s["status"]),
+            )
+            self.db.add(svc)
+            self.db.commit()
+            service_by_id[s["id"]] = svc
+            self.services[s["id"]] = svc
+
+        voyages_data = load_reference_voyages()
+        for vy in voyages_data:
+            svc_obj = service_by_id.get(vy["serviceId"])
+            ves_obj = vessel_by_imo.get(vy["vesselImo"])
+            exp_arr = datetime.fromisoformat(vy["expectedArrivalTime"].replace("Z", "+00:00")) if vy.get("expectedArrivalTime") else None
+            voyage = models.Voyage(
+                service_id=svc_obj.id if svc_obj else list(service_by_id.values())[0].id,
+                vessel_id=ves_obj.id if ves_obj else list(vessel_by_imo.values())[0].id,
+                voyage_number=vy["voyageNumber"],
+                departure_time=datetime.fromisoformat(vy["departureTime"].replace("Z", "+00:00")),
+                arrival_time=datetime.fromisoformat(vy["arrivalTime"].replace("Z", "+00:00")),
+                expected_arrival_time=exp_arr,
+                is_blank_sailing=vy.get("isBlankSailing", False),
+                status=enums.VoyageStatus(vy["status"]),
+            )
+            self.db.add(voyage)
+            self.db.commit()
+            self.voyages[vy["id"]] = voyage
+
+            # Add port calls if operating voyage
+            if not vy.get("isBlankSailing", False):
+                dep_dt = datetime.fromisoformat(vy["departureTime"].replace("Z", "+00:00"))
+                arr_dt = datetime.fromisoformat(vy["arrivalTime"].replace("Z", "+00:00"))
+                call_from = models.VoyagePortCall(
+                    voyage_id=voyage.id,
+                    port_id=self.locations["INMAA"].id,
+                    sequence=1,
+                    arrival_time=dep_dt - timedelta(hours=4),
+                    departure_time=dep_dt,
+                )
+                call_to = models.VoyagePortCall(
+                    voyage_id=voyage.id,
+                    port_id=self.locations["AEDXB"].id,
+                    sequence=2,
+                    arrival_time=arr_dt,
+                    departure_time=arr_dt + timedelta(hours=4),
+                )
+                self.db.add_all([call_from, call_to])
+                self.db.commit()
+
+        # Seed Voyage Legs
+        legs_data = load_reference_voyage_legs()
+        for lg in legs_data:
+            vy_obj = self.voyages.get(lg["voyageId"])
+            if vy_obj and vy_obj.port_calls and len(vy_obj.port_calls) >= 2:
+                leg = models.VoyageLeg(
+                    voyage_id=vy_obj.id,
+                    from_port_call_id=vy_obj.port_calls[0].id,
+                    to_port_call_id=vy_obj.port_calls[1].id,
+                    total_capacity=lg["totalCapacity"],
+                    booked_capacity=lg["bookedCapacity"],
+                    accessible_capacity=lg.get("accessibleCapacity"),
+                    alliance_slots=lg.get("allianceSlots", 0),
+                    alliance_cost_adjustment=lg.get("allianceCostAdjustment", 0.0),
+                )
+                self.db.add(leg)
+                self.db.commit()
+                self.legs[lg["id"]] = leg
 
         now = datetime.utcnow()
-        voyage1 = models.Voyage(
-            service_id=svc_ame.id,
-            vessel_id=self.vessels["IMO9811000"].id,
-            voyage_number="V100",
-            departure_time=now,
-            arrival_time=now + timedelta(days=10),
-            status=enums.VoyageStatus.SCHEDULED,
-        )
-        self.db.add(voyage1)
-        self.db.commit()
-        self.voyages["V100"] = voyage1
 
-        # Port calls: Shanghai (1) -> Singapore (2) -> Dubai (3)
-        call1 = models.VoyagePortCall(
-            voyage_id=voyage1.id,
-            port_id=self.locations["CNSHA"].id,
-            sequence=1,
-            arrival_time=now,
-            departure_time=now + timedelta(hours=12),
-        )
-        call2 = models.VoyagePortCall(
-            voyage_id=voyage1.id,
-            port_id=self.locations["SGSIN"].id,
-            sequence=2,
-            arrival_time=now + timedelta(days=4),
-            departure_time=now + timedelta(days=4, hours=12),
-        )
-        call3 = models.VoyagePortCall(
-            voyage_id=voyage1.id,
-            port_id=self.locations["AEDXB"].id,
-            sequence=3,
-            arrival_time=now + timedelta(days=9),
-            departure_time=now + timedelta(days=9, hours=12),
-        )
-        self.db.add_all([call1, call2, call3])
-        self.db.commit()
-
-        leg1 = models.VoyageLeg(
-            voyage_id=voyage1.id,
-            from_port_call_id=call1.id,
-            to_port_call_id=call2.id,
-            total_capacity=500,
-            booked_capacity=200,
-        )
-        leg2 = models.VoyageLeg(
-            voyage_id=voyage1.id,
-            from_port_call_id=call2.id,
-            to_port_call_id=call3.id,
-            total_capacity=500,
-            booked_capacity=200,
-        )
-        self.db.add_all([leg1, leg2])
-        self.db.commit()
-        self.legs["SHA-SIN"] = leg1
-        self.legs["SIN-DXB"] = leg2
-
-        # 5. Seed Specific Test Containers (CONT_001 to CONT_010)
+        # 5. Seed Specific Test Containers (CONT_001 to CONT_015)
         containers_data = load_reference_containers()
         for c in containers_data:
             owner_id = carrier.id if c["controlledByCarrier"] else other_carrier.id
             loc = self.locations.get(c["unlocode"])
+            avail_dt = datetime.fromisoformat(c["availableFrom"].replace("Z", "+00:00")) if c.get("availableFrom") else None
             cnt = models.Container(
                 container_number=c["containerNumber"],
                 container_type=enums.ContainerType(c["containerType"]),
@@ -213,7 +229,8 @@ class ScenarioBuilder:
                 condition=enums.ContainerCondition(c["condition"]),
                 controlled_by_carrier=c["controlledByCarrier"],
                 customs_hold=c["customsHold"],
-                available_from=datetime.fromisoformat(c["availableFrom"].replace("Z", "+00:00")),
+                is_emergency_reserve=c.get("isEmergencyReserve", False),
+                available_from=avail_dt,
             )
             self.db.add(cnt)
             self.db.commit()
@@ -236,9 +253,43 @@ class ScenarioBuilder:
                 self.db.add(comm)
         self.db.commit()
 
+        # Seed Container Voyage Assignments (CVA_001, CVA_002)
+        assignments_data = load_reference_container_assignments()
+        for cva in assignments_data:
+            cnt_obj = self.containers.get(cva["containerId"])
+            vy_obj = self.voyages.get(cva["voyageId"])
+            if cnt_obj and vy_obj:
+                cva_obj = models.ContainerVoyageAssignment(
+                    container_id=cnt_obj.id,
+                    voyage_id=vy_obj.id,
+                    status=cva.get("status", "COMMITTED"),
+                )
+                self.db.add(cva_obj)
+        self.db.commit()
+
+        # Seed Expected Container Movements (ECM_001 to ECM_004)
+        expected_movements_data = load_reference_expected_container_movements()
+        for ecm in expected_movements_data:
+            cnt_obj = self.containers.get(ecm["containerId"])
+            from_loc = self.locations.get(ecm.get("fromUnlocode"))
+            to_loc = self.locations.get(ecm.get("toUnlocode"))
+            vy_obj = self.voyages.get(ecm.get("voyageId"))
+            if cnt_obj:
+                ecm_obj = models.ExpectedContainerMovement(
+                    container_id=cnt_obj.id,
+                    from_location_id=from_loc.id if from_loc else None,
+                    to_location_id=to_loc.id if to_loc else None,
+                    voyage_id=vy_obj.id if vy_obj else None,
+                    planned_date=datetime.fromisoformat(ecm["plannedDate"].replace("Z", "+00:00")),
+                    expected_date=datetime.fromisoformat(ecm["expectedDate"].replace("Z", "+00:00")),
+                    status=ecm.get("status", "EXPECTED"),
+                )
+                self.db.add(ecm_obj)
+        self.db.commit()
+
         # Seed additional containers up to 25 for total fleet size compatibility
-        for i in range(11, 26):
-            loc_key = "CNSHA" if i <= 18 else "AEDXB"
+        for i in range(16, 26):
+            loc_key = "CNSHA" if i <= 20 else "AEDXB"
             cnt = models.Container(
                 container_number=f"MSCU9900{i:03d}",
                 container_type=enums.ContainerType.DRY_40FT,
@@ -248,6 +299,7 @@ class ScenarioBuilder:
                 condition=enums.ContainerCondition.CARGO_WORTHY,
                 controlled_by_carrier=True,
                 customs_hold=False,
+                is_emergency_reserve=False,
                 available_from=now,
             )
             self.db.add(cnt)
@@ -256,9 +308,10 @@ class ScenarioBuilder:
     def build_scenario_capacity_shortage(self):
         """Scenario 2: High booked capacity leaves minimal space for empty repositioning."""
         self.setup_base_world()
-        leg1 = self.legs["SHA-SIN"]
-        leg1.booked_capacity = 480  # Only 20 TEU available out of 500
-        self.db.commit()
+        if "LEG_001" in self.legs:
+            leg1 = self.legs["LEG_001"]
+            leg1.booked_capacity = 480  # Only 20 TEU available out of 500
+            self.db.commit()
 
     def build_scenario_demand_spike(self):
         """Scenario 5: Demand surge in Dubai with low available inventory."""

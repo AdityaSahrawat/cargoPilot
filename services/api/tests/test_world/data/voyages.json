@@ -1,0 +1,46 @@
+[
+  {
+    "id": "VOY_001",
+    "serviceId": "SVC_01",
+    "vesselImo": "IMO9812345",
+    "voyageNumber": "CS0826",
+    "departureTime": "2026-08-25T18:00:00Z",
+    "arrivalTime": "2026-08-30T10:00:00Z",
+    "expectedArrivalTime": "2026-08-30T12:00:00Z",
+    "status": "SCHEDULED",
+    "isBlankSailing": false
+  },
+  {
+    "id": "VOY_002",
+    "serviceId": "SVC_01",
+    "vesselImo": "IMO9823456",
+    "voyageNumber": "GE0901",
+    "departureTime": "2026-09-01T18:00:00Z",
+    "arrivalTime": "2026-09-06T10:00:00Z",
+    "expectedArrivalTime": "2026-09-06T10:00:00Z",
+    "status": "SCHEDULED",
+    "isBlankSailing": false
+  },
+  {
+    "id": "VOY_003",
+    "serviceId": "SVC_01",
+    "vesselImo": "IMO9812345",
+    "voyageNumber": "CS0908",
+    "departureTime": "2026-09-08T18:00:00Z",
+    "arrivalTime": "2026-09-13T10:00:00Z",
+    "expectedArrivalTime": "2026-09-13T10:00:00Z",
+    "status": "CANCELLED",
+    "isBlankSailing": true
+  },
+  {
+    "id": "VOY_004",
+    "serviceId": "SVC_01",
+    "vesselImo": "IMO9823456",
+    "voyageNumber": "GE0915",
+    "departureTime": "2026-09-15T18:00:00Z",
+    "arrivalTime": "2026-09-20T10:00:00Z",
+    "expectedArrivalTime": "2026-09-20T16:00:00Z",
+    "status": "SCHEDULED",
+    "isBlankSailing": false
+  }
+]

@@ -50,8 +50,9 @@ class Container(Base, UUIDMixin, TimestampMixin):
     )
     controlled_by_carrier: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     customs_hold: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    available_from: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    is_emergency_reserve: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    available_from: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=True
     )
     last_movement_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -69,6 +70,9 @@ class Container(Base, UUIDMixin, TimestampMixin):
     )
     commitments: Mapped[List["ContainerCommitment"]] = relationship(
         "ContainerCommitment", back_populates="container"
+    )
+    expected_movements: Mapped[List["ExpectedContainerMovement"]] = relationship(
+        "ExpectedContainerMovement", back_populates="container"
     )
 
 
@@ -100,6 +104,40 @@ class ContainerCommitment(Base, UUIDMixin, TimestampMixin):
     # Relationships
     container: Mapped["Container"] = relationship("Container", back_populates="commitments")
     required_location: Mapped[Optional["Location"]] = relationship("Location")
+
+
+class ExpectedContainerMovement(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "expected_container_movements"
+
+    container_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("containers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    from_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    to_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("locations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    voyage_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("voyages.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    planned_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expected_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="EXPECTED", nullable=False)
+
+    # Relationships
+    container: Mapped["Container"] = relationship("Container", back_populates="expected_movements")
+    from_location: Mapped[Optional["Location"]] = relationship("Location", foreign_keys=[from_location_id])
+    to_location: Mapped[Optional["Location"]] = relationship("Location", foreign_keys=[to_location_id])
+    voyage: Mapped[Optional["Voyage"]] = relationship("Voyage")
 
 
 class ContainerEvent(Base, UUIDMixin, TimestampMixin):

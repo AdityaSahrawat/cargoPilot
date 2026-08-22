@@ -22,12 +22,14 @@ class OptimizationInputBuilder:
         - Non-AVAILABLE status (e.g. IN_TRANSIT, UNDER_REPAIR, ASSIGNED)
         - Equipment controlled by another carrier (controlled_by_carrier = False)
         - Containers under customs hold (customs_hold = True)
+        - Emergency reserve equipment (is_emergency_reserve = True)
         - Containers with active operational commitments (container_commitments)
         """
         query = self.db.query(models.Container).filter(
             models.Container.status == enums.ContainerStatus.AVAILABLE,
             models.Container.controlled_by_carrier == True,
             models.Container.customs_hold == False,
+            models.Container.is_emergency_reserve == False,
         )
 
         if location_id:

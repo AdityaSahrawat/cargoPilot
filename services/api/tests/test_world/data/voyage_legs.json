@@ -1,0 +1,35 @@
+[
+  {
+    "id": "LEG_001",
+    "voyageId": "VOY_001",
+    "fromUnlocode": "INMAA",
+    "toUnlocode": "AEDXB",
+    "totalCapacity": 500,
+    "bookedCapacity": 320,
+    "accessibleCapacity": 500,
+    "allianceSlots": 0,
+    "allianceCostAdjustment": 0.0
+  },
+  {
+    "id": "LEG_002",
+    "voyageId": "VOY_002",
+    "fromUnlocode": "INMAA",
+    "toUnlocode": "AEDXB",
+    "totalCapacity": 700,
+    "bookedCapacity": 450,
+    "accessibleCapacity": 500,
+    "allianceSlots": 100,
+    "allianceCostAdjustment": 500.0
+  },
+  {
+    "id": "LEG_003",
+    "voyageId": "VOY_004",
+    "fromUnlocode": "INMAA",
+    "toUnlocode": "AEDXB",
+    "totalCapacity": 700,
+    "bookedCapacity": 100,
+    "accessibleCapacity": 700,
+    "allianceSlots": 0,
+    "allianceCostAdjustment": 0.0
+  }
+]

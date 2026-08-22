@@ -11,6 +11,8 @@ class VoyageBase(CamelModel):
     voyage_number: str
     departure_time: datetime
     arrival_time: datetime
+    expected_arrival_time: Optional[datetime] = None
+    is_blank_sailing: bool = False
     status: VoyageStatus = VoyageStatus.SCHEDULED
 
 
@@ -24,6 +26,8 @@ class VoyageUpdate(CamelModel):
     voyage_number: Optional[str] = None
     departure_time: Optional[datetime] = None
     arrival_time: Optional[datetime] = None
+    expected_arrival_time: Optional[datetime] = None
+    is_blank_sailing: Optional[bool] = None
     status: Optional[VoyageStatus] = None
 
 
@@ -57,6 +61,9 @@ class VoyageLegBase(CamelModel):
     to_port_call_id: UUID
     total_capacity: int
     booked_capacity: int = 0
+    accessible_capacity: Optional[int] = None
+    alliance_slots: Optional[int] = 0
+    alliance_cost_adjustment: Optional[float] = 0.0
 
 
 class VoyageLegCreate(VoyageLegBase):
@@ -66,5 +73,17 @@ class VoyageLegCreate(VoyageLegBase):
 class VoyageLegResponse(VoyageLegBase):
     id: UUID
     available_capacity: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ContainerVoyageAssignmentBase(CamelModel):
+    container_id: UUID
+    voyage_id: UUID
+    status: str = "COMMITTED"
+
+
+class ContainerVoyageAssignmentResponse(ContainerVoyageAssignmentBase):
+    id: UUID
     created_at: datetime
     updated_at: datetime

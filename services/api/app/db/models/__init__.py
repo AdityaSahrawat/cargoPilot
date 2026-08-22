@@ -2,10 +2,10 @@ from app.db.database import Base
 from app.db.models.base import TimestampMixin, UUIDMixin
 from app.db.models.company import Company, CompanyLocation
 from app.db.models.location import Location, LocationClosureWindow, NetworkRoute
-from app.db.models.container import Container, ContainerEvent, ContainerCommitment
+from app.db.models.container import Container, ContainerEvent, ContainerCommitment, ExpectedContainerMovement
 from app.db.models.vessel import Vessel
 from app.db.models.service import Service
-from app.db.models.voyage import Voyage, VoyagePortCall, VoyageLeg
+from app.db.models.voyage import Voyage, VoyagePortCall, VoyageLeg, ContainerVoyageAssignment
 from app.db.models.booking import Booking, EquipmentAssignment
 from app.db.models.lease import Lease
 from app.db.models.forecast import DemandForecast
@@ -29,11 +29,13 @@ __all__ = [
     "Container",
     "ContainerEvent",
     "ContainerCommitment",
+    "ExpectedContainerMovement",
     "Vessel",
     "Service",
     "Voyage",
     "VoyagePortCall",
     "VoyageLeg",
+    "ContainerVoyageAssignment",
     "Booking",
     "EquipmentAssignment",
     "Lease",

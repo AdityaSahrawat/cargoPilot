@@ -17,6 +17,24 @@ def load_reference_vessels() -> List[Dict[str, Any]]:
         return json.load(f)
 
 
+def load_reference_services() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "services.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_voyages() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "voyages.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_voyage_legs() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "voyage_legs.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_reference_containers() -> List[Dict[str, Any]]:
     file_path = os.path.join(DATA_DIR, "containers.json")
     with open(file_path, "r", encoding="utf-8") as f:
@@ -25,6 +43,18 @@ def load_reference_containers() -> List[Dict[str, Any]]:
 
 def load_reference_container_commitments() -> List[Dict[str, Any]]:
     file_path = os.path.join(DATA_DIR, "container_commitments.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_container_assignments() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "container_voyage_assignments.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_expected_container_movements() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "expected_container_movements.json")
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
 

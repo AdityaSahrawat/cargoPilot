@@ -1,0 +1,14 @@
+[
+  {
+    "id": "CVA_001",
+    "containerId": "CONT_004",
+    "voyageId": "VOY_004",
+    "status": "COMMITTED"
+  },
+  {
+    "id": "CVA_002",
+    "containerId": "CONT_010",
+    "voyageId": "VOY_002",
+    "status": "ASSIGNED"
+  }
+]

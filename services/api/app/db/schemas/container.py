@@ -22,7 +22,8 @@ class ContainerBase(CamelModel):
     condition: ContainerCondition = ContainerCondition.CARGO_WORTHY
     controlled_by_carrier: bool = True
     customs_hold: bool = False
-    available_from: datetime
+    is_emergency_reserve: bool = False
+    available_from: Optional[datetime] = None
     last_movement_at: Optional[datetime] = None
 
 
@@ -40,6 +41,7 @@ class ContainerUpdate(CamelModel):
     condition: Optional[ContainerCondition] = None
     controlled_by_carrier: Optional[bool] = None
     customs_hold: Optional[bool] = None
+    is_emergency_reserve: Optional[bool] = None
     available_from: Optional[datetime] = None
     last_movement_at: Optional[datetime] = None
 
@@ -69,6 +71,22 @@ class ContainerCommitmentCreate(ContainerCommitmentBase):
 
 
 class ContainerCommitmentResponse(ContainerCommitmentBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class ExpectedContainerMovementBase(CamelModel):
+    container_id: UUID
+    from_location_id: Optional[UUID] = None
+    to_location_id: Optional[UUID] = None
+    voyage_id: Optional[UUID] = None
+    planned_date: datetime
+    expected_date: datetime
+    status: str = "EXPECTED"
+
+
+class ExpectedContainerMovementResponse(ExpectedContainerMovementBase):
     id: UUID
     created_at: datetime
     updated_at: datetime

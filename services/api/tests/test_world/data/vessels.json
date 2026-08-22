@@ -1,23 +1,42 @@
 [
   {
-    "imoNumber": "IMO9811000",
-    "name": "CargoPilot Alpha",
-    "vesselType": "ULCV",
-    "containerCapacity": 10000,
+    "id": "VES_01",
+    "imoNumber": "IMO9812345",
+    "name": "MV Cargo Star",
+    "vesselType": "CONTAINER_SHIP",
+    "containerCapacity": 500,
     "status": "ACTIVE"
   },
   {
-    "imoNumber": "IMO9811012",
+    "id": "VES_02",
+    "imoNumber": "IMO9823456",
+    "name": "MV Gulf Express",
+    "vesselType": "CONTAINER_SHIP",
+    "containerCapacity": 700,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "VES_03",
+    "imoNumber": "IMO9811000",
     "name": "CargoPilot Voyager",
     "vesselType": "CONTAINER_SHIP",
-    "containerCapacity": 14000,
+    "containerCapacity": 1200,
     "status": "ACTIVE"
   },
   {
-    "imoNumber": "IMO9811024",
-    "name": "Ocean Transporter",
+    "id": "VES_04",
+    "imoNumber": "IMO9811012",
+    "name": "CargoPilot Express",
     "vesselType": "FEEDER",
-    "containerCapacity": 6500,
+    "containerCapacity": 450,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "VES_05",
+    "imoNumber": "IMO9811024",
+    "name": "CargoPilot Titan",
+    "vesselType": "ULCV",
+    "containerCapacity": 3500,
     "status": "ACTIVE"
   }
 ]

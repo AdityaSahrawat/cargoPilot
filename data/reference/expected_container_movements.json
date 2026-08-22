@@ -1,0 +1,40 @@
+[
+  {
+    "id": "ECM_001",
+    "containerId": "CONT_013",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "INMAA",
+    "plannedDate": "2026-08-25T00:00:00Z",
+    "expectedDate": "2026-08-25T00:00:00Z",
+    "status": "EXPECTED"
+  },
+  {
+    "id": "ECM_002",
+    "containerId": "CONT_010",
+    "fromUnlocode": "INMAA",
+    "toUnlocode": "AEDXB",
+    "voyageId": "VOY_002",
+    "plannedDate": "2026-09-01T18:00:00Z",
+    "expectedDate": "2026-09-01T18:00:00Z",
+    "status": "IN_TRANSIT"
+  },
+  {
+    "id": "ECM_003",
+    "containerId": "CONT_004",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "AEDXB",
+    "voyageId": "VOY_004",
+    "plannedDate": "2026-09-15T18:00:00Z",
+    "expectedDate": "2026-09-15T18:00:00Z",
+    "status": "COMMITTED"
+  },
+  {
+    "id": "ECM_004",
+    "containerId": "CONT_014",
+    "fromUnlocode": "AEDXB",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "plannedDate": "2026-09-06T00:00:00Z",
+    "expectedDate": "2026-09-07T00:00:00Z",
+    "status": "DELAYED"
+  }
+]
