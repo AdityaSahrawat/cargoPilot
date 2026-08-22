@@ -13,6 +13,9 @@ from tests.test_world.reference_data import (
     load_reference_container_commitments,
     load_reference_container_assignments,
     load_reference_expected_container_movements,
+    load_reference_leases,
+    load_reference_procurement_orders,
+    load_reference_procurement_recommendations,
     load_reference_location_closures,
     load_reference_network_routes,
 )
@@ -32,7 +35,7 @@ class ScenarioBuilder:
         self.containers: Dict[str, models.Container] = {}
 
     def setup_base_world(self):
-        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Commitments, Expected Movements, Routes & Closures."""
+        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Commitments, Expected Movements, Routes & Closures."""
         # 1. Companies
         carrier = models.Company(
             name="Global Carrier Line",
@@ -50,18 +53,26 @@ class ScenarioBuilder:
             company_type=enums.CompanyType.LESSOR,
             is_self=False,
         )
+        lessor2 = models.Company(
+            name="AsiaContainer Rentals",
+            company_type=enums.CompanyType.LESSOR,
+            is_self=False,
+        )
         other_carrier = models.Company(
             name="Alliance Transport Line",
             company_type=enums.CompanyType.ALLIANCE_PARTNER,
             is_self=False,
         )
-        self.db.add_all([carrier, customer, lessor, other_carrier])
+        self.db.add_all([carrier, customer, lessor, lessor2, other_carrier])
         self.db.commit()
         self.companies = {
             "carrier": carrier,
             "customer": customer,
             "lessor": lessor,
+            "lessor2": lessor2,
             "other_carrier": other_carrier,
+            "COMP_LESSOR_01": lessor,
+            "COMP_LESSOR_02": lessor2,
         }
 
         # 2. Reference Ports & Depots
@@ -212,9 +223,71 @@ class ScenarioBuilder:
                 self.db.commit()
                 self.legs[lg["id"]] = leg
 
+        # Seed Leases
+        leases_data = load_reference_leases()
+        for lz in leases_data:
+            lessor_c = self.companies.get(lz["lessorCompanyId"], lessor)
+            pickup_l = self.locations.get(lz["pickupUnlocode"])
+            return_l = self.locations.get(lz["returnUnlocode"])
+            start_dt = datetime.fromisoformat(lz["startDate"].replace("Z", "+00:00"))
+            end_dt = datetime.fromisoformat(lz["endDate"].replace("Z", "+00:00")) if lz.get("endDate") else None
+            if pickup_l:
+                lease_obj = models.Lease(
+                    lessor_company_id=lessor_c.id,
+                    lessee_company_id=carrier.id,
+                    container_type=enums.ContainerType(lz["containerType"]),
+                    quantity=lz["quantity"],
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    pickup_location_id=pickup_l.id,
+                    return_location_id=return_l.id if return_l else None,
+                    cost_per_unit=lz["costPerUnit"],
+                    minimum_duration_days=lz.get("minimumDurationDays", 30),
+                    early_return_allowed=lz.get("earlyReturnAllowed", True),
+                    early_return_fee=lz.get("earlyReturnFee", 0.0),
+                )
+                self.db.add(lease_obj)
+        self.db.commit()
+
+        # Seed Procurement Orders
+        po_data = load_reference_procurement_orders()
+        for po in po_data:
+            deliv_l = self.locations.get(po["deliveryUnlocode"])
+            if deliv_l:
+                po_obj = models.ProcurementOrder(
+                    po_number=po["poNumber"],
+                    supplier_name=po["supplierName"],
+                    container_type=enums.ContainerType(po["containerType"]),
+                    quantity=po["quantity"],
+                    order_date=date.fromisoformat(po["orderDate"]),
+                    expected_delivery=date.fromisoformat(po["expectedDelivery"]),
+                    delivery_location_id=deliv_l.id,
+                    unit_price=po["unitPrice"],
+                    status=po.get("status", "IN_PRODUCTION"),
+                )
+                self.db.add(po_obj)
+        self.db.commit()
+
+        # Seed Procurement Recommendations
+        rec_data = load_reference_procurement_recommendations()
+        for pr in rec_data:
+            rec_l = self.locations.get(pr["recommendedUnlocode"])
+            if rec_l:
+                pr_obj = models.ProcurementRecommendation(
+                    recommendation_code=pr["recommendationCode"],
+                    container_type=enums.ContainerType(pr["containerType"]),
+                    quantity=pr["quantity"],
+                    recommended_location_id=rec_l.id,
+                    required_by_week=pr["requiredByWeek"],
+                    recommended_order_by_date=pr["recommendedOrderByDate"],
+                    reason=pr.get("reason"),
+                )
+                self.db.add(pr_obj)
+        self.db.commit()
+
         now = datetime.utcnow()
 
-        # 5. Seed Specific Test Containers (CONT_001 to CONT_015)
+        # 5. Seed Specific Test Containers (CONT_001 to CONT_024)
         containers_data = load_reference_containers()
         for c in containers_data:
             owner_id = carrier.id if c["controlledByCarrier"] else other_carrier.id
@@ -287,9 +360,9 @@ class ScenarioBuilder:
                 self.db.add(ecm_obj)
         self.db.commit()
 
-        # Seed additional containers up to 25 for total fleet size compatibility
-        for i in range(16, 26):
-            loc_key = "CNSHA" if i <= 20 else "AEDXB"
+        # Seed additional containers up to 25+ for total fleet size compatibility
+        for i in range(25, 31):
+            loc_key = "CNSHA" if i <= 27 else "AEDXB"
             cnt = models.Container(
                 container_number=f"MSCU9900{i:03d}",
                 container_type=enums.ContainerType.DRY_40FT,

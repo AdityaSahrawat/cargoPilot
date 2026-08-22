@@ -1,0 +1,22 @@
+[
+  {
+    "id": "PROC_REC_001",
+    "recommendationCode": "PROC_REC_001",
+    "containerType": "40FT_DRY",
+    "quantity": 200,
+    "recommendedUnlocode": "AEDXB-DEPOT-01",
+    "requiredByWeek": "Week 14",
+    "recommendedOrderByDate": "Week 4",
+    "reason": "Persistent projected shortage after Week 10"
+  },
+  {
+    "id": "PROC_REC_002",
+    "recommendationCode": "PROC_REC_002",
+    "containerType": "40FT_DRY",
+    "quantity": 100,
+    "recommendedUnlocode": "INMAA-DEPOT-01",
+    "requiredByWeek": "Week 16",
+    "recommendedOrderByDate": "Week 6",
+    "reason": "Fleet buffer falling below target safety threshold"
+  }
+]

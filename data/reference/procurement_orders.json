@@ -1,0 +1,26 @@
+[
+  {
+    "id": "PO_001",
+    "poNumber": "PO_001",
+    "supplierName": "CIMC_TEST",
+    "containerType": "40FT_DRY",
+    "quantity": 300,
+    "orderDate": "2026-08-01",
+    "expectedDelivery": "2026-10-10",
+    "deliveryUnlocode": "INMAA-DEPOT-01",
+    "unitPrice": 210000.0,
+    "status": "IN_PRODUCTION"
+  },
+  {
+    "id": "PO_002",
+    "poNumber": "PO_002",
+    "supplierName": "DONGFANG_TEST",
+    "containerType": "40FT_DRY",
+    "quantity": 200,
+    "orderDate": "2026-08-15",
+    "expectedDelivery": "2026-10-25",
+    "deliveryUnlocode": "AEDXB-DEPOT-01",
+    "unitPrice": 215000.0,
+    "status": "CONFIRMED"
+  }
+]

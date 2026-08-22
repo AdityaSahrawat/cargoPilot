@@ -59,6 +59,24 @@ def load_reference_expected_container_movements() -> List[Dict[str, Any]]:
         return json.load(f)
 
 
+def load_reference_leases() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "leases.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_procurement_orders() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "procurement_orders.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_reference_procurement_recommendations() -> List[Dict[str, Any]]:
+    file_path = os.path.join(DATA_DIR, "procurement_recommendations.json")
+    with open(file_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_reference_bookings() -> List[Dict[str, Any]]:
     file_path = os.path.join(DATA_DIR, "bookings.json")
     with open(file_path, "r", encoding="utf-8") as f:

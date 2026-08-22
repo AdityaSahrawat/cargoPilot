@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import Integer, Numeric, DateTime, Enum as SQLEnum, ForeignKey, UUID
+from sqlalchemy import Integer, Numeric, Boolean, DateTime, Enum as SQLEnum, ForeignKey, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 from app.db.enums import ContainerType
@@ -39,6 +39,9 @@ class Lease(Base, UUIDMixin, TimestampMixin):
         nullable=True,
     )
     cost_per_unit: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    minimum_duration_days: Mapped[Optional[int]] = mapped_column(Integer, default=30, nullable=True)
+    early_return_allowed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    early_return_fee: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), default=0.0, nullable=True)
 
     # Relationships
     lessor_company: Mapped["Company"] = relationship(

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "LEASE_001",
+    "lessorCompanyId": "COMP_LESSOR_01",
+    "lesseeCompanyId": "CARR_01",
+    "containerType": "40FT_DRY",
+    "quantity": 50,
+    "pickupUnlocode": "INMAA-DEPOT-01",
+    "returnUnlocode": "INMAA-DEPOT-01",
+    "costPerUnit": 180.0,
+    "minimumDurationDays": 30,
+    "earlyReturnAllowed": true,
+    "earlyReturnFee": 2000.0,
+    "startDate": "2026-09-01T00:00:00Z",
+    "endDate": "2026-10-01T00:00:00Z"
+  },
+  {
+    "id": "LEASE_002",
+    "lessorCompanyId": "COMP_LESSOR_02",
+    "lesseeCompanyId": "CARR_01",
+    "containerType": "40FT_DRY",
+    "quantity": 30,
+    "pickupUnlocode": "INMAA-DEPOT-02",
+    "returnUnlocode": "INMAA-DEPOT-02",
+    "costPerUnit": 155.0,
+    "minimumDurationDays": 45,
+    "earlyReturnAllowed": false,
+    "earlyReturnFee": 0.0,
+    "startDate": "2026-09-03T00:00:00Z",
+    "endDate": "2026-10-18T00:00:00Z"
+  },
+  {
+    "id": "LEASE_003",
+    "lessorCompanyId": "COMP_LESSOR_01",
+    "lesseeCompanyId": "CARR_01",
+    "containerType": "40FT_DRY",
+    "quantity": 20,
+    "pickupUnlocode": "AEDXB-DEPOT-01",
+    "returnUnlocode": "AEDXB-DEPOT-01",
+    "costPerUnit": 210.0,
+    "minimumDurationDays": 30,
+    "earlyReturnAllowed": true,
+    "earlyReturnFee": 1500.0,
+    "startDate": "2026-09-05T00:00:00Z",
+    "endDate": "2026-10-05T00:00:00Z"
+  }
+]

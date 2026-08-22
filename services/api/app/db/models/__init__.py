@@ -9,6 +9,7 @@ from app.db.models.voyage import Voyage, VoyagePortCall, VoyageLeg, ContainerVoy
 from app.db.models.booking import Booking, EquipmentAssignment
 from app.db.models.lease import Lease
 from app.db.models.forecast import DemandForecast
+from app.db.models.procurement import ProcurementOrder, ProcurementRecommendation
 from app.db.models.optimization import (
     OptimizationRun,
     OptimizationReposition,
@@ -40,6 +41,8 @@ __all__ = [
     "EquipmentAssignment",
     "Lease",
     "DemandForecast",
+    "ProcurementOrder",
+    "ProcurementRecommendation",
     "OptimizationRun",
     "OptimizationReposition",
     "OptimizationLease",

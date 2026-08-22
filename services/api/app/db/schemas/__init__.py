@@ -66,6 +66,14 @@ from app.db.schemas.lease import (
     LeaseUpdate,
     LeaseResponse,
 )
+from app.db.schemas.procurement import (
+    ProcurementOrderBase,
+    ProcurementOrderCreate,
+    ProcurementOrderResponse,
+    ProcurementRecommendationBase,
+    ProcurementRecommendationCreate,
+    ProcurementRecommendationResponse,
+)
 from app.db.schemas.forecast import (
     DemandForecastBase,
     DemandForecastCreate,

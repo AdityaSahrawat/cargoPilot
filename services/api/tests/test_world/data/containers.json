@@ -195,5 +195,61 @@
     "isEmergencyReserve": false,
     "ownerCompanyId": "CARR_01",
     "availableFrom": null
+  },
+  {
+    "id": "CONT_021",
+    "containerNumber": "MSCU9900021",
+    "containerType": "40FT_DRY",
+    "unlocode": "INMAA-DEPOT-01",
+    "status": "UNDER_REPAIR",
+    "condition": "REPAIRABLE",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-09-10T00:00:00Z",
+    "estimatedRepairCost": 35000.0
+  },
+  {
+    "id": "CONT_022",
+    "containerNumber": "MSCU9900022",
+    "containerType": "40FT_DRY",
+    "unlocode": "INMAA-DEPOT-01",
+    "status": "OFF_HIRE",
+    "condition": "UNSERVICEABLE",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": null,
+    "estimatedScrapValue": 55000.0
+  },
+  {
+    "id": "CONT_023",
+    "containerNumber": "MSCU9900023",
+    "containerType": "40FT_DRY",
+    "unlocode": "AEDXB-DEPOT-01",
+    "status": "OFF_HIRE",
+    "condition": "DAMAGED",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": null,
+    "estimatedSaleValue": 80000.0
+  },
+  {
+    "id": "CONT_024",
+    "containerNumber": "MSCU9900024",
+    "containerType": "40FT_DRY",
+    "unlocode": "AEDXB-DEPOT-01",
+    "status": "AVAILABLE",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-08-21T00:00:00Z",
+    "estimatedSaleValue": 120000.0
   }
 ]

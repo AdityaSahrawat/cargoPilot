@@ -15,6 +15,9 @@ class LeaseBase(CamelModel):
     pickup_location_id: UUID
     return_location_id: Optional[UUID] = None
     cost_per_unit: float
+    minimum_duration_days: Optional[int] = 30
+    early_return_allowed: bool = True
+    early_return_fee: Optional[float] = 0.0
 
 
 class LeaseCreate(LeaseBase):
@@ -31,6 +34,9 @@ class LeaseUpdate(CamelModel):
     pickup_location_id: Optional[UUID] = None
     return_location_id: Optional[UUID] = None
     cost_per_unit: Optional[float] = None
+    minimum_duration_days: Optional[int] = None
+    early_return_allowed: Optional[bool] = None
+    early_return_fee: Optional[float] = None
 
 
 class LeaseResponse(LeaseBase):
