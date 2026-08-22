@@ -1,0 +1,14 @@
+[
+  {
+    "id": "REP_EXISTING_001",
+    "commitmentCode": "REP_EXISTING_001",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "containerType": "40FT_DRY",
+    "quantity": 10,
+    "departureWeek": "W1",
+    "arrivalWeek": "W3",
+    "status": "BOOKED",
+    "costPerUnit": 18000.0
+  }
+]

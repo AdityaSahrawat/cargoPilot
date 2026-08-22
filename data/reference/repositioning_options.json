@@ -1,0 +1,57 @@
+[
+  {
+    "id": "REP_OPTION_001",
+    "optionCode": "REP_OPTION_001",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "week": "W1",
+    "containerType": "40FT_DRY",
+    "maxQuantity": 40,
+    "arrivalWeek": "W3",
+    "costPerUnit": 18000.0
+  },
+  {
+    "id": "REP_OPTION_002",
+    "optionCode": "REP_OPTION_002",
+    "fromUnlocode": "INMAA-DEPOT-02",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "week": "W1",
+    "containerType": "40FT_DRY",
+    "maxQuantity": 15,
+    "arrivalWeek": "W3",
+    "costPerUnit": 19000.0
+  },
+  {
+    "id": "REP_OPTION_003",
+    "optionCode": "REP_OPTION_003",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "week": "W3",
+    "containerType": "40FT_DRY",
+    "maxQuantity": 40,
+    "arrivalWeek": "W5",
+    "costPerUnit": 18000.0
+  },
+  {
+    "id": "REP_OPTION_004",
+    "optionCode": "REP_OPTION_004",
+    "fromUnlocode": "INMAA-DEPOT-01",
+    "toUnlocode": "AEDXB-DEPOT-01",
+    "week": "W5",
+    "containerType": "40FT_DRY",
+    "maxQuantity": 40,
+    "arrivalWeek": "W7",
+    "costPerUnit": 18000.0
+  },
+  {
+    "id": "REP_OPTION_005",
+    "optionCode": "REP_OPTION_005",
+    "fromUnlocode": "AEDXB-DEPOT-02",
+    "toUnlocode": "INMAA-DEPOT-01",
+    "week": "W2",
+    "containerType": "40FT_DRY",
+    "maxQuantity": 7,
+    "arrivalWeek": "W4",
+    "costPerUnit": 17000.0
+  }
+]

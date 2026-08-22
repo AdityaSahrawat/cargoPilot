@@ -251,5 +251,44 @@
     "ownerCompanyId": "CARR_01",
     "availableFrom": "2026-08-21T00:00:00Z",
     "estimatedSaleValue": 120000.0
+  },
+  {
+    "id": "CONT_030",
+    "containerNumber": "MSCU9900030",
+    "containerType": "40FT_DRY",
+    "unlocode": "INMAA-DEPOT-01",
+    "status": "ASSIGNED",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-09-08T00:00:00Z"
+  },
+  {
+    "id": "CONT_031",
+    "containerNumber": "MSCU9900031",
+    "containerType": "40FT_DRY",
+    "unlocode": "INMAA-DEPOT-01",
+    "status": "UNDER_REPAIR",
+    "condition": "REPAIRABLE",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-09-15T00:00:00Z"
+  },
+  {
+    "id": "CONT_032",
+    "containerNumber": "MSCU9900032",
+    "containerType": "40FT_DRY",
+    "unlocode": "INMAA-DEPOT-01",
+    "status": "IN_TRANSIT",
+    "condition": "CARGO_WORTHY",
+    "customsHold": false,
+    "controlledByCarrier": true,
+    "isEmergencyReserve": false,
+    "ownerCompanyId": "CARR_01",
+    "availableFrom": "2026-09-08T00:00:00Z"
   }
 ]

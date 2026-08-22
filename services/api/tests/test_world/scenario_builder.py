@@ -16,6 +16,8 @@ from tests.test_world.reference_data import (
     load_reference_leases,
     load_reference_procurement_orders,
     load_reference_procurement_recommendations,
+    load_reference_repositioning_options,
+    load_reference_repositioning_commitments,
     load_reference_location_closures,
     load_reference_network_routes,
 )
@@ -35,7 +37,7 @@ class ScenarioBuilder:
         self.containers: Dict[str, models.Container] = {}
 
     def setup_base_world(self):
-        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Commitments, Expected Movements, Routes & Closures."""
+        """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Commitments, Expected Movements, Routes & Closures."""
         # 1. Companies
         carrier = models.Company(
             name="Global Carrier Line",
@@ -88,6 +90,7 @@ class ScenarioBuilder:
                 latitude=p.get("latitude"),
                 longitude=p.get("longitude"),
                 storage_capacity=p.get("storageCapacity"),
+                reserve_capacity=p.get("reserveCapacity", 0),
                 repair_capability=p.get("repairCapability"),
                 operating_hours=p.get("operatingHours"),
                 pickup_hours=p.get("pickupHours"),
@@ -285,9 +288,48 @@ class ScenarioBuilder:
                 self.db.add(pr_obj)
         self.db.commit()
 
+        # Seed Repositioning Options
+        repo_options_data = load_reference_repositioning_options()
+        for ro in repo_options_data:
+            from_loc = self.locations.get(ro["fromUnlocode"])
+            to_loc = self.locations.get(ro["toUnlocode"])
+            if from_loc and to_loc:
+                ro_obj = models.RepositioningOption(
+                    option_code=ro["optionCode"],
+                    from_location_id=from_loc.id,
+                    to_location_id=to_loc.id,
+                    week=ro["week"],
+                    container_type=enums.ContainerType(ro["containerType"]),
+                    max_quantity=ro["maxQuantity"],
+                    arrival_week=ro["arrivalWeek"],
+                    cost_per_unit=ro["costPerUnit"],
+                )
+                self.db.add(ro_obj)
+        self.db.commit()
+
+        # Seed Repositioning Commitments
+        repo_commitments_data = load_reference_repositioning_commitments()
+        for rc in repo_commitments_data:
+            from_loc = self.locations.get(rc["fromUnlocode"])
+            to_loc = self.locations.get(rc["toUnlocode"])
+            if from_loc and to_loc:
+                rc_obj = models.RepositioningCommitment(
+                    commitment_code=rc["commitmentCode"],
+                    from_location_id=from_loc.id,
+                    to_location_id=to_loc.id,
+                    container_type=enums.ContainerType(rc["containerType"]),
+                    quantity=rc["quantity"],
+                    departure_week=rc["departureWeek"],
+                    arrival_week=rc["arrivalWeek"],
+                    status=rc.get("status", "BOOKED"),
+                    cost_per_unit=rc["costPerUnit"],
+                )
+                self.db.add(rc_obj)
+        self.db.commit()
+
         now = datetime.utcnow()
 
-        # 5. Seed Specific Test Containers (CONT_001 to CONT_024)
+        # 5. Seed Specific Test Containers (CONT_001 to CONT_032)
         containers_data = load_reference_containers()
         for c in containers_data:
             owner_id = carrier.id if c["controlledByCarrier"] else other_carrier.id
@@ -360,9 +402,9 @@ class ScenarioBuilder:
                 self.db.add(ecm_obj)
         self.db.commit()
 
-        # Seed additional containers up to 25+ for total fleet size compatibility
-        for i in range(25, 31):
-            loc_key = "CNSHA" if i <= 27 else "AEDXB"
+        # Seed additional containers up to 33+ for total fleet size compatibility
+        for i in range(33, 36):
+            loc_key = "CNSHA" if i <= 34 else "AEDXB"
             cnt = models.Container(
                 container_number=f"MSCU9900{i:03d}",
                 container_type=enums.ContainerType.DRY_40FT,

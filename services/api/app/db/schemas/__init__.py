@@ -74,6 +74,12 @@ from app.db.schemas.procurement import (
     ProcurementRecommendationCreate,
     ProcurementRecommendationResponse,
 )
+from app.db.schemas.repositioning import (
+    RepositioningOptionBase,
+    RepositioningOptionResponse,
+    RepositioningCommitmentBase,
+    RepositioningCommitmentResponse,
+)
 from app.db.schemas.forecast import (
     DemandForecastBase,
     DemandForecastCreate,

@@ -21,6 +21,7 @@ class Location(Base, UUIDMixin, TimestampMixin):
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     storage_capacity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    reserve_capacity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     repair_capability: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     parent_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),

@@ -8,6 +8,7 @@
     "latitude": 13.0827,
     "longitude": 80.2707,
     "storageCapacity": 2000,
+    "reserveCapacity": 0,
     "operatingHours": "24 Hours",
     "operationalStatus": "ACTIVE"
   },
@@ -20,6 +21,7 @@
     "latitude": 13.0900,
     "longitude": 80.2800,
     "storageCapacity": 500,
+    "reserveCapacity": 15,
     "repairCapability": true,
     "operatingHours": "06:00-22:00",
     "pickupHours": "06:00-21:00",
@@ -37,6 +39,7 @@
     "latitude": 13.0700,
     "longitude": 80.2600,
     "storageCapacity": 150,
+    "reserveCapacity": 5,
     "repairCapability": false,
     "operatingHours": "07:00-20:00",
     "pickupHours": "07:00-19:00",
@@ -54,6 +57,7 @@
     "latitude": 24.9857,
     "longitude": 55.0611,
     "storageCapacity": 1500,
+    "reserveCapacity": 0,
     "operatingHours": "24 Hours",
     "operationalStatus": "ACTIVE"
   },
@@ -65,10 +69,26 @@
     "region": "Middle East",
     "latitude": 25.0200,
     "longitude": 55.1200,
-    "storageCapacity": 300,
+    "storageCapacity": 150,
+    "reserveCapacity": 5,
     "repairCapability": true,
     "operatingHours": "06:00-22:00",
-    "closedDays": "Sunday",
+    "closedDays": "Friday 00:00-12:00",
+    "parentUnlocode": "AEDXB",
+    "operationalStatus": "ACTIVE"
+  },
+  {
+    "unlocode": "AEDXB-DEPOT-02",
+    "name": "Dubai Secondary Depot",
+    "locationType": "DEPOT",
+    "country": "United Arab Emirates",
+    "region": "Middle East",
+    "latitude": 25.0300,
+    "longitude": 55.1400,
+    "storageCapacity": 100,
+    "reserveCapacity": 3,
+    "repairCapability": false,
+    "operatingHours": "07:00-20:00",
     "parentUnlocode": "AEDXB",
     "operationalStatus": "ACTIVE"
   },
@@ -81,6 +101,7 @@
     "latitude": 31.2304,
     "longitude": 121.4737,
     "storageCapacity": 5000,
+    "reserveCapacity": 0,
     "operatingHours": "24 Hours",
     "operationalStatus": "ACTIVE"
   },
@@ -93,6 +114,7 @@
     "latitude": 1.3521,
     "longitude": 103.8198,
     "storageCapacity": 4000,
+    "reserveCapacity": 0,
     "operatingHours": "24 Hours",
     "operationalStatus": "ACTIVE"
   },
@@ -105,6 +127,7 @@
     "latitude": 51.9244,
     "longitude": 4.4777,
     "storageCapacity": 3000,
+    "reserveCapacity": 0,
     "operatingHours": "24 Hours",
     "operationalStatus": "ACTIVE"
   }

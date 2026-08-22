@@ -14,6 +14,7 @@ class LocationBase(CamelModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     storage_capacity: Optional[int] = None
+    reserve_capacity: int = 0
     repair_capability: Optional[bool] = None
     parent_location_id: Optional[UUID] = None
     operating_hours: Optional[str] = None
@@ -36,6 +37,7 @@ class LocationUpdate(CamelModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     storage_capacity: Optional[int] = None
+    reserve_capacity: Optional[int] = None
     repair_capability: Optional[bool] = None
     parent_location_id: Optional[UUID] = None
     operating_hours: Optional[str] = None

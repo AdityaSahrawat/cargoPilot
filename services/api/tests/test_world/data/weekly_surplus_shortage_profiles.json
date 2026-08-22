@@ -1,0 +1,34 @@
+[
+  {
+    "unlocode": "INMAA-DEPOT-01",
+    "containerType": "40FT_DRY",
+    "profiles": [
+      {"week": "W1", "supply": 110, "demand": 80, "net": 30},
+      {"week": "W2", "supply": 105, "demand": 85, "net": 20},
+      {"week": "W3", "supply": 100, "demand": 90, "net": 10},
+      {"week": "W4", "supply": 105, "demand": 95, "net": 10},
+      {"week": "W5", "supply": 110, "demand": 100, "net": 10},
+      {"week": "W6", "supply": 120, "demand": 105, "net": 15},
+      {"week": "W7", "supply": 120, "demand": 110, "net": 10},
+      {"week": "W8", "supply": 420, "demand": 115, "net": 305},
+      {"week": "W9", "supply": 410, "demand": 120, "net": 290},
+      {"week": "W10", "supply": 400, "demand": 125, "net": 275}
+    ]
+  },
+  {
+    "unlocode": "AEDXB-DEPOT-01",
+    "containerType": "40FT_DRY",
+    "profiles": [
+      {"week": "W1", "supply": 50, "demand": 70, "net": -20},
+      {"week": "W2", "supply": 55, "demand": 75, "net": -20},
+      {"week": "W3", "supply": 60, "demand": 80, "net": -20},
+      {"week": "W4", "supply": 65, "demand": 85, "net": -20},
+      {"week": "W5", "supply": 65, "demand": 90, "net": -25},
+      {"week": "W6", "supply": 70, "demand": 95, "net": -25},
+      {"week": "W7", "supply": 75, "demand": 100, "net": -25},
+      {"week": "W8", "supply": 280, "demand": 105, "net": 175},
+      {"week": "W9", "supply": 275, "demand": 110, "net": 165},
+      {"week": "W10", "supply": 270, "demand": 115, "net": 155}
+    ]
+  }
+]
