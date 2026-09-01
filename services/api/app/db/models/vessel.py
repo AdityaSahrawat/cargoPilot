@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-from sqlalchemy import String, Integer, Enum as SQLEnum, ForeignKey, UUID
+from sqlalchemy import String, Integer, Float, Enum as SQLEnum, ForeignKey, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 from app.db.enums import VesselType, VesselStatus
@@ -27,6 +27,8 @@ class Vessel(Base, UUIDMixin, TimestampMixin):
         nullable=False,
     )
     container_capacity: Mapped[int] = mapped_column(Integer, nullable=False)
+    deadweight_capacity_mt: Mapped[float] = mapped_column(Float, default=20000.0, nullable=False)
+    reefer_plugs: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     status: Mapped[VesselStatus] = mapped_column(
         SQLEnum(VesselStatus, native_enum=False),
         default=VesselStatus.ACTIVE,

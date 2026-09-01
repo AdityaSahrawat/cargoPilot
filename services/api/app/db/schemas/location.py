@@ -15,6 +15,11 @@ class LocationBase(CamelModel):
     longitude: Optional[float] = None
     storage_capacity: Optional[int] = None
     reserve_capacity: int = 0
+    safety_stock_teu: int = 0
+    devanning_lead_time_days: int = 2
+    max_daily_moves: Optional[int] = 500
+    lift_on_cost: float = 50.0
+    lift_off_cost: float = 50.0
     repair_capability: Optional[bool] = None
     parent_location_id: Optional[UUID] = None
     operating_hours: Optional[str] = None

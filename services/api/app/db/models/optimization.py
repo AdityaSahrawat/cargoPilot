@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from typing import Optional, List
-from sqlalchemy import Integer, Date, DateTime, Numeric, Enum as SQLEnum, ForeignKey, UUID
+from sqlalchemy import Integer, Float, Date, DateTime, Numeric, String, Enum as SQLEnum, ForeignKey, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 from app.db.enums import ContainerType, OptimizationStatus
@@ -23,11 +23,22 @@ class OptimizationRun(Base, UUIDMixin, TimestampMixin):
         default=OptimizationStatus.PENDING,
         nullable=False,
     )
+    solver_status: Mapped[Optional[str]] = mapped_column(String(50), default="OPTIMAL", nullable=True)
+    optimality_gap: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    solve_time_seconds: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
     objective_value: Mapped[Optional[float]] = mapped_column(Numeric(14, 2), nullable=True)
+    total_repositioning_cost: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    total_leasing_cost: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    total_holding_cost: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    total_shortage_penalty: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    total_safety_stock_penalty: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     company: Mapped["Company"] = relationship("Company", back_populates="optimization_runs")
+    booking_allocations: Mapped[List["OptimizationBookingAllocation"]] = relationship(
+        "OptimizationBookingAllocation", back_populates="run", cascade="all, delete-orphan"
+    )
     repositions: Mapped[List["OptimizationReposition"]] = relationship(
         "OptimizationReposition", back_populates="run", cascade="all, delete-orphan"
     )
@@ -149,3 +160,41 @@ class OptimizationDemand(Base, UUIDMixin, TimestampMixin):
     # Relationships
     run: Mapped["OptimizationRun"] = relationship("OptimizationRun", back_populates="demands")
     location: Mapped["Location"] = relationship("Location", back_populates="optimization_demands")
+
+
+class OptimizationBookingAllocation(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "optimization_booking_allocations"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("optimization_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    booking_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("bookings.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    path_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    voyage_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("voyages.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    container_type: Mapped[ContainerType] = mapped_column(
+        SQLEnum(ContainerType, native_enum=False),
+        nullable=False,
+    )
+    owned_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    leased_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    unserved_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    departure_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    expected_arrival_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivery_delay_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    fulfillment_cost: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    # Relationships
+    run: Mapped["OptimizationRun"] = relationship("OptimizationRun", back_populates="booking_allocations")
+    booking: Mapped["Booking"] = relationship("Booking")
+    voyage: Mapped[Optional["Voyage"]] = relationship("Voyage")
+

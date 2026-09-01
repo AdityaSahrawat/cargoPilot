@@ -12,6 +12,8 @@ class VesselBase(CamelModel):
     operator_company_id: UUID
     vessel_type: VesselType
     container_capacity: int
+    deadweight_capacity_mt: float = 20000.0
+    reefer_plugs: int = 100
     status: VesselStatus = VesselStatus.ACTIVE
 
 
@@ -26,6 +28,8 @@ class VesselUpdate(CamelModel):
     operator_company_id: Optional[UUID] = None
     vessel_type: Optional[VesselType] = None
     container_capacity: Optional[int] = None
+    deadweight_capacity_mt: Optional[float] = None
+    reefer_plugs: Optional[int] = None
     status: Optional[VesselStatus] = None
 
 

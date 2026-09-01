@@ -12,17 +12,23 @@ class BookingBase(CamelModel):
     destination_location_id: UUID
     container_type: ContainerType
     quantity: int
+    cargo_weight_mt: Optional[float] = 15.0
     requested_pickup_date: datetime
     required_delivery_date: Optional[datetime] = None
     requested_at: Optional[datetime] = None
     confirmed_at: Optional[datetime] = None
+    booking_cutoff_at: Optional[datetime] = None
+    assignment_deadline_at: Optional[datetime] = None
     empty_pickup_open_at: Optional[datetime] = None
+    si_cutoff_at: Optional[datetime] = None
+    vgm_cutoff_at: Optional[datetime] = None
     gate_cutoff_at: Optional[datetime] = None
     voyage_id: Optional[UUID] = None
     priority: Optional[BookingPriority] = BookingPriority.NORMAL
     operational_criticality: Optional[BookingPriority] = BookingPriority.NORMAL
     allowed_equipment_sources: Optional[str] = None
     alternative_voyage_allowed: bool = False
+    is_splittable: bool = False
     status: BookingStatus = BookingStatus.PENDING
 
 

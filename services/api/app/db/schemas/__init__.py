@@ -102,6 +102,7 @@ from app.db.schemas.optimization import (
     OptimizationRunApproveRequest,
     OptimizationRunApproveResponse,
     OptimizationPlanResponse,
+    BookingAllocationPlanItem,
     RepositioningPlanItem,
     LeasingPlanItem,
     InventoryPlanItem,

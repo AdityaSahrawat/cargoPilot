@@ -62,6 +62,8 @@ class VoyageLegBase(CamelModel):
     total_capacity: int
     booked_capacity: int = 0
     accessible_capacity: Optional[int] = None
+    deadweight_capacity_mt: float = 20000.0
+    booked_weight_mt: float = 0.0
     alliance_slots: Optional[int] = 0
     alliance_cost_adjustment: Optional[float] = 0.0
 
@@ -73,6 +75,7 @@ class VoyageLegCreate(VoyageLegBase):
 class VoyageLegResponse(VoyageLegBase):
     id: UUID
     available_capacity: int
+    available_weight_capacity: float
     created_at: datetime
     updated_at: datetime
 

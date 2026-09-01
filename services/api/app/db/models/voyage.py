@@ -17,11 +17,14 @@ class Voyage(Base, UUIDMixin, TimestampMixin):
         ForeignKey("services.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    vessel_id: Mapped[uuid.UUID] = mapped_column(
+    vessel_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("vessels.id", ondelete="RESTRICT"),
-        nullable=False,
+        ForeignKey("vessels.id", ondelete="SET NULL"),
+        nullable=True,
     )
+    vessel_assignment_status: Mapped[str] = mapped_column(
+        String(50), default="FIRM", nullable=False
+    )  # "FIRM", "PROVISIONAL", "UNASSIGNED"
     voyage_number: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     departure_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     arrival_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -35,7 +38,7 @@ class Voyage(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     service: Mapped["Service"] = relationship("Service", back_populates="voyages")
-    vessel: Mapped["Vessel"] = relationship("Vessel", back_populates="voyages")
+    vessel: Mapped[Optional["Vessel"]] = relationship("Vessel", back_populates="voyages")
     port_calls: Mapped[List["VoyagePortCall"]] = relationship(
         "VoyagePortCall", back_populates="voyage", cascade="all, delete-orphan", order_by="VoyagePortCall.sequence"
     )
@@ -99,6 +102,8 @@ class VoyageLeg(Base, UUIDMixin, TimestampMixin):
     total_capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     booked_capacity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     accessible_capacity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    deadweight_capacity_mt: Mapped[float] = mapped_column(Float, default=20000.0, nullable=False)
+    booked_weight_mt: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     alliance_slots: Mapped[Optional[int]] = mapped_column(Integer, default=0, nullable=True)
     alliance_cost_adjustment: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
 
@@ -118,6 +123,10 @@ class VoyageLeg(Base, UUIDMixin, TimestampMixin):
     def available_capacity(self) -> int:
         cap = self.accessible_capacity if self.accessible_capacity is not None else self.total_capacity
         return cap - self.booked_capacity
+
+    @hybrid_property
+    def available_weight_capacity(self) -> float:
+        return self.deadweight_capacity_mt - self.booked_weight_mt
 
 
 class ContainerVoyageAssignment(Base, UUIDMixin, TimestampMixin):

@@ -14,6 +14,7 @@ from app.db.models.repositioning import RepositioningOption, RepositioningCommit
 from app.db.models.cost import CostParameter
 from app.db.models.optimization import (
     OptimizationRun,
+    OptimizationBookingAllocation,
     OptimizationReposition,
     OptimizationLease,
     OptimizationInventory,
@@ -51,6 +52,7 @@ __all__ = [
     "RepositioningCommitment",
     "CostParameter",
     "OptimizationRun",
+    "OptimizationBookingAllocation",
     "OptimizationReposition",
     "OptimizationLease",
     "OptimizationInventory",

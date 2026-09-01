@@ -22,6 +22,11 @@ class Location(Base, UUIDMixin, TimestampMixin):
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     storage_capacity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     reserve_capacity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    safety_stock_teu: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    devanning_lead_time_days: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    max_daily_moves: Mapped[Optional[int]] = mapped_column(Integer, default=500, nullable=True)
+    lift_on_cost: Mapped[float] = mapped_column(Float, default=50.0, nullable=False)
+    lift_off_cost: Mapped[float] = mapped_column(Float, default=50.0, nullable=False)
     repair_capability: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     parent_location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),

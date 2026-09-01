@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import Integer, Boolean, String, DateTime, Enum as SQLEnum, ForeignKey, UUID
+from sqlalchemy import Integer, Float, Boolean, String, DateTime, Enum as SQLEnum, ForeignKey, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 from app.db.enums import ContainerType, BookingPriority, BookingStatus
@@ -36,13 +36,18 @@ class Booking(Base, UUIDMixin, TimestampMixin):
         nullable=False,
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    cargo_weight_mt: Mapped[Optional[float]] = mapped_column(Float, default=15.0, nullable=True)
     requested_pickup_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     required_delivery_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     requested_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    booking_cutoff_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    assignment_deadline_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     empty_pickup_open_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    si_cutoff_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    vgm_cutoff_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     gate_cutoff_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     voyage_id: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -62,6 +67,7 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     )
     allowed_equipment_sources: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     alternative_voyage_allowed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_splittable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     status: Mapped[BookingStatus] = mapped_column(
         SQLEnum(BookingStatus, native_enum=False),
