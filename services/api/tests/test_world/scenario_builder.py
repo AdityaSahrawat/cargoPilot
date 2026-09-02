@@ -43,6 +43,45 @@ class ScenarioBuilder:
 
     def setup_base_world(self):
         """Seed Companies, Ports, Vessels, Services, Voyages, Containers, Leases, Procurement, Repositioning, Import Returns, Costs, Bookings, Backlogs, Commitments, Expected Movements, Routes & Closures."""
+        # Clean existing tables
+        models_to_clean = [
+            models.OptimizationBookingAllocation,
+            models.OptimizationReposition,
+            models.OptimizationLease,
+            models.OptimizationInventory,
+            models.OptimizationDemand,
+            models.OptimizationRun,
+            models.EquipmentAssignment,
+            models.Booking,
+            models.ContainerEvent,
+            models.ContainerVoyageAssignment,
+            models.ContainerCommitment,
+            models.ExpectedContainerMovement,
+            models.Container,
+            models.VoyageLeg,
+            models.VoyagePortCall,
+            models.Voyage,
+            models.Service,
+            models.Vessel,
+            models.CompanyLocation,
+            models.LocationClosureWindow,
+            models.NetworkRoute,
+            models.Location,
+            models.Company,
+            models.CostParameter,
+            models.Lease,
+            models.DemandForecast,
+            models.ImportReturnForecast,
+            models.PriorPeriodBacklog,
+            models.ProcurementOrder,
+            models.ProcurementRecommendation,
+            models.RepositioningOption,
+            models.RepositioningCommitment,
+        ]
+        for m in models_to_clean:
+            self.db.query(m).delete()
+        self.db.commit()
+
         # 1. Companies & Customer Contracts
         carrier = models.Company(
             name="Global Carrier Line",
