@@ -10,9 +10,13 @@ from app.db import models
 from tests.test_world.scenario_builder import ScenarioBuilder
 
 
+from app.db.enums import LocationType
+from app.test_worlds.world_1.db_seeder import reseed_world_1_db
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ensure both Production DB and Isolated Test DB tables exist on startup."""
+    """Ensure both Production DB and Isolated Test DB tables exist and are populated on startup."""
     Base.metadata.create_all(bind=engine)
     Base.metadata.create_all(bind=test_engine)
 
@@ -25,12 +29,11 @@ async def lifespan(app: FastAPI):
     finally:
         prod_db.close()
 
-    # Seed isolated test DB baseline if empty
+    # Seed isolated test DB (cargo_pilot_test.db) with canonical World 1 dataset if empty
     test_db = TestSessionLocal()
     try:
-        if not test_db.query(models.Company).first():
-            builder = ScenarioBuilder(test_db)
-            builder.setup_base_world()
+        if not test_db.query(models.Location).filter(models.Location.location_type == LocationType.PORT).first():
+            reseed_world_1_db(test_db)
     finally:
         test_db.close()
 

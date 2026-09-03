@@ -11,6 +11,8 @@ from app.api.v1 import (
     optimization,
     dashboard,
     scenarios,
+    simulation,
+    test_admin,
 )
 
 api_v1_router = APIRouter()
@@ -25,3 +27,5 @@ api_v1_router.include_router(forecast.router, tags=["Group 7 — Demand & Foreca
 api_v1_router.include_router(optimization.router, tags=["Group 8 — Optimization"])
 api_v1_router.include_router(dashboard.router, tags=["Group 9 — Dashboard"])
 api_v1_router.include_router(scenarios.router, tags=["Scenarios & Test World"])
+api_v1_router.include_router(simulation.router, prefix="/simulation", tags=["Simulation & World 1"])
+api_v1_router.include_router(test_admin.router, tags=["Test Admin & DB Controls"])
