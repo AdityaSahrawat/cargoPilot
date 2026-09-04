@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
@@ -6,6 +6,7 @@ from app.db.database import get_test_db
 from app.db.enums import ContainerType
 from app.test_worlds.world_1.db_seeder import load_world_1_from_db
 from app.test_worlds.world_1.fixtures import get_world_1_dataset
+from app.test_worlds.world_2.fixtures_v2 import get_world_2_dataset
 from app.optimization.milp_solver import CargoPilotMILPSolver
 from app.simulation.daily_engine import DailySimulationEngine
 
@@ -534,4 +535,235 @@ def get_world_1_day_snapshot(day_number: int, db: Session = Depends(get_test_db)
         "daily_leasing_cost": s.daily_leasing_cost,
         "cumulative_total_cost": s.cumulative_total_cost,
         "alerts": s.alerts,
+    }
+
+
+# ============================================================
+# WORLD 2 ENDPOINTS  —  55 Ports, 18 Vessels, 84-Day Horizon
+# ============================================================
+
+
+@router.get("/world-2/summary")
+def get_world_2_summary():
+    """Returns the full World 2 fixture summary (55 ports, 18 vessels, 349 legs, 193 bookings)."""
+    data = get_world_2_dataset()
+    ctypes = list(data.container_types.keys())
+
+    # Aggregate voyages and rotation info
+    voyages: Dict[str, Dict] = {}
+    for leg in data.voyage_legs:
+        vn = leg.voyage_number
+        if vn not in voyages:
+            voyages[vn] = {
+                "voyage_number": vn,
+                "vessel_name": leg.vessel_name,
+                "service_code": "_".join(vn.split("_")[1:3]),  # e.g. AEX1_R1 → AEX1
+                "legs": [],
+            }
+        voyages[vn]["legs"].append({
+            "leg_id": leg.leg_id,
+            "from_port": leg.from_port_unlocode,
+            "to_port": leg.to_port_unlocode,
+            "departure_day": leg.departure_day,
+            "arrival_day": leg.arrival_day,
+            "transit_days": leg.transit_days,
+            "capacity_teu": leg.capacity_teu,
+        })
+
+    return {
+        "world_id": "WORLD-02",
+        "name": "Full-Scale Global MILP Benchmark (55 Ports, 18 Vessels, 84 Days)",
+        "horizon_days": data.horizon_days,
+        "base_date": str(data.base_date),
+        "scale": {
+            "ports": len(data.ports),
+            "vessels": len(data.vessels),
+            "container_types": len(data.container_types),
+            "voyage_legs": len(data.voyage_legs),
+            "unique_voyages": len(voyages),
+            "bookings": len(data.bookings),
+        },
+        "new_milp_features": {
+            "demand_forecast_entries": len(data.demand_forecast),
+            "return_forecast_entries": len(data.return_forecast),
+            "in_transit_pipeline_entries": sum(1 for v in data.in_transit_pipeline.values() if v > 0),
+            "precomputed_safety_stocks": len(data.safety_stocks),
+            "historical_weeks": 12,
+            "historical_records": len(data.historical_demand),
+            "lease_cap_short_entries": len(data.lease_cap_short),
+            "storage_capacity_entries": len(data.storage_capacity),
+        },
+        "equation_families_active": 20,
+        "ports": [
+            {
+                "unlocode": p.unlocode,
+                "name": p.name,
+                "country": p.country,
+                "region": p.region,
+                "latitude": p.latitude,
+                "longitude": p.longitude,
+                "storage_capacity_teu": p.storage_capacity_teu,
+                "safety_stock_teu": p.safety_stock_teu,
+                "devanning_lead_time_days": p.devanning_lead_time_days,
+                "lift_on_cost": p.lift_on_cost,
+                "lift_off_cost": p.lift_off_cost,
+            }
+            for p in data.ports.values()
+        ],
+        "vessels": [
+            {
+                "imo_number": v.imo_number,
+                "name": v.name,
+                "vessel_type": v.vessel_type.value,
+                "capacity_teu": v.container_capacity_teu,
+                "deadweight_mt": v.deadweight_capacity_mt,
+                "reefer_plugs": v.reefer_plugs,
+            }
+            for v in data.vessels
+        ],
+        "voyages": list(voyages.values()),
+        "bookings": [
+            {
+                "booking_id": b.booking_id,
+                "origin": b.origin_unlocode,
+                "destination": b.destination_unlocode,
+                "container_type": b.container_type.value,
+                "quantity": b.quantity,
+                "cargo_ready_day": b.cargo_ready_day,
+                "cutoff_day": b.cutoff_day,
+                "delivery_deadline_day": b.delivery_deadline_day,
+                "priority": b.priority.value,
+                "cargo_weight_mt": b.cargo_weight_mt,
+            }
+            for b in data.bookings
+        ],
+        "cost_parameters": {
+            "short_term_leasing_sample": {
+                f"{p}_{k.value}": v
+                for (p, k), v in list(data.leasing_costs.items())[:10]
+            },
+            "long_term_leasing_sample": {
+                f"{p}_{k.value}": v
+                for (p, k), v in list(data.leasing_costs_long.items())[:10]
+            },
+            "holding_costs_sample": {
+                f"{p}_{k.value}": v
+                for (p, k), v in list(data.holding_costs.items())[:10]
+            },
+            "shortage_penalties": {
+                prio.value: pen for prio, pen in data.shortage_penalties.items()
+            },
+        },
+        "forecast_sample": {
+            "demand_D_CNSHA_40DC_day10": data.demand_forecast.get(
+                ("CNSHA", ContainerType.DRY_40FT, 10), None
+            ),
+            "return_R_CNSHA_40DC_day31": data.return_forecast.get(
+                ("CNSHA", ContainerType.DRY_40FT, 31), None
+            ),
+            "safety_stock_SS_CNSHA_40DC_day0": data.safety_stocks.get(
+                ("CNSHA", ContainerType.DRY_40FT, 0), None
+            ),
+            "in_transit_G_NLRTM_40HC_day5": data.in_transit_pipeline.get(
+                ("NLRTM", ContainerType.HIGH_CUBE_40FT, 5), None
+            ),
+        },
+        "historical_sample": {
+            "hist_demand_CNSHA_40DC_week_neg12": data.historical_demand.get(
+                ("CNSHA", ContainerType.DRY_40FT, -84), None
+            ),
+            "hist_inv_NLRTM_40HC_week_neg4": data.historical_inventory.get(
+                ("NLRTM", ContainerType.HIGH_CUBE_40FT, -28), None
+            ),
+        },
+    }
+
+
+@router.post("/world-2/solve-milp")
+def solve_world_2_milp(time_limit: int = 120):
+    """
+    Runs the full 20-equation-family MILP on World 2 data.
+    Returns optimal decisions including long-term leasing, delay variables,
+    handling costs, and all new World 2 cost terms.
+    Warning: With 55 ports × 193 bookings, allow 60–120s for solve.
+    """
+    data = get_world_2_dataset()
+    solver = CargoPilotMILPSolver(data)
+    sol = solver.solve(time_limit_seconds=float(time_limit))
+
+    return {
+        "solver_name": sol.solver_name,
+        "solver_status": sol.solver_status,
+        "optimality_gap": sol.optimality_gap,
+        "objective_value": sol.objective_value,
+        "best_bound": sol.best_bound,
+        "solve_time_seconds": sol.solve_time_seconds,
+        "num_variables": sol.num_variables,
+        "num_constraints": sol.num_constraints,
+        "num_integer_variables": sol.num_integer_variables,
+        "world_2_active": True,
+        "equation_families": 20,
+        "cost_breakdown": {
+            "repositioning_cost":     sol.total_repositioning_cost,
+            "leasing_short_cost":     sol.total_leasing_short_cost,
+            "leasing_long_cost":      sol.total_leasing_long_cost,
+            "holding_cost":           sol.total_holding_cost,
+            "handling_cost":          sol.total_handling_cost,
+            "delay_penalty":          sol.total_delay_penalty,
+            "shortage_penalty":       sol.total_shortage_penalty,
+            "safety_stock_penalty":   sol.total_safety_stock_penalty,
+        },
+        "booking_decisions": [
+            {
+                "booking_id":      bd.booking_id,
+                "path_id":         bd.selected_path_id,
+                "container_type":  bd.container_type.value,
+                "owned_qty":       bd.owned_quantity,
+                "leased_qty":      bd.leased_quantity,
+                "unserved_qty":    bd.unserved_quantity,
+                "legs":            bd.legs_traversed,
+                "departure_day":   bd.departure_day,
+                "arrival_day":     bd.arrival_day,
+                "delay_days":      bd.delay_days,
+                "cost":            bd.fulfillment_cost,
+            }
+            for bd in sol.booking_decisions
+        ],
+        "repositioning_decisions": [
+            {
+                "leg_id":          rd.leg_id,
+                "voyage_number":   rd.voyage_number,
+                "from_port":       rd.from_port,
+                "to_port":         rd.to_port,
+                "departure_day":   rd.departure_day,
+                "arrival_day":     rd.arrival_day,
+                "container_type":  rd.container_type.value,
+                "quantity":        rd.quantity,
+                "cost":            rd.cost,
+            }
+            for rd in sol.repositioning_decisions
+        ],
+        "long_lease_decisions": [
+            {
+                "port":            ll.port_unlocode,
+                "container_type":  ll.container_type.value,
+                "day":             ll.day,
+                "quantity":        ll.quantity,
+                "cost":            ll.cost,
+            }
+            for ll in sol.long_lease_decisions
+        ],
+        "summary": {
+            "bookings_fully_served": sum(
+                1 for bd in sol.booking_decisions if bd.unserved_quantity == 0
+            ),
+            "bookings_partial":  sum(
+                1 for bd in sol.booking_decisions if bd.unserved_quantity > 0
+            ),
+            "total_repositioning_moves": len(sol.repositioning_decisions),
+            "total_long_lease_injections": len(sol.long_lease_decisions),
+            "delayed_bookings": sum(
+                1 for bd in sol.booking_decisions if bd.delay_days > 0.5
+            ),
+        },
     }
