@@ -83,7 +83,13 @@ export default function AdminHomePage() {
               href="/test/world1"
               className="px-3 py-1.5 rounded-lg transition-all text-indigo-600 font-bold bg-indigo-50/70 border border-indigo-200/50 hover:bg-indigo-100/70"
             >
-              🕹️ World 1 Lab Workbench
+              🕹️ World 1 Lab
+            </Link>
+            <Link
+              href="/test/world2"
+              className="px-3 py-1.5 rounded-lg transition-all text-violet-700 font-bold bg-violet-50/70 border border-violet-200/50 hover:bg-violet-100/70"
+            >
+              🌐 World 2 Lab
             </Link>
             <button
               onClick={() => setActiveTab("FLEET_OPERATIONS")}

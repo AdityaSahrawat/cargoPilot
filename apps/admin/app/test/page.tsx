@@ -42,7 +42,13 @@ export default function TestWorldsHubPage() {
               href="/test/world1"
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5"
             >
-              <span>🕹️ Open World 1 Workbench</span>
+              <span>🕹️ World 1 Workbench</span>
+            </Link>
+            <Link
+              href="/test/world2"
+              className="bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1.5"
+            >
+              <span>🌐 World 2 Workbench</span>
             </Link>
           </div>
 
@@ -99,36 +105,40 @@ export default function TestWorldsHubPage() {
           </div>
 
           {/* World 2 Card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
+          <div className="bg-white border-2 border-violet-500 rounded-2xl p-6 shadow-md space-y-4 relative flex flex-col justify-between">
             <div className="space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">World 2: 15-Port Regional Mesh</h2>
-                  <div className="text-xs text-slate-500 font-semibold">Transshipment Hubs & Feeders</div>
+                  <h2 className="text-base font-bold text-slate-900">World 2: Full-Scale Global MILP</h2>
+                  <div className="text-xs text-violet-600 font-semibold">All 20 Equation Families · 84-Day Horizon</div>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  🟡 Configured
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  🟢 Active & Verified
                 </span>
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed">
-                Regional feeder and transshipment network testing hub connections, intermodal rail transfers, and multi-vessel slot swaps.
+                The CargoPilot global-scale benchmark implementing all 20 MILP equation families. Adds long-term leasing (L_long),
+                delay variables (Delay_b), terminal handling costs (UP/DOWN), dynamic safety stocks SS[i,k,t],
+                demand/return forecasts, and 12 weeks of historical data.
               </p>
 
               <ul className="text-xs text-slate-600 space-y-2 border-t border-slate-100 pt-3">
-                <li>• <strong>15 Ports:</strong> Asia-Pacific Main Ports + Inland Depots</li>
-                <li>• <strong>24 Scheduled Voyages:</strong> Feeder & Mainline Loops</li>
-                <li>• <strong>120 Bookings:</strong> Multi-Commodity Demands</li>
-                <li>• <strong>60-Day Horizon:</strong> Rolling lookahead evaluation</li>
+                <li>• <strong>55 Global Ports:</strong> Asia, Europe, Americas, Middle East, Africa, Oceania</li>
+                <li>• <strong>18 Vessels (67 Rotations):</strong> 349 legs over 84-day horizon</li>
+                <li>• <strong>5 Container Types:</strong> 20DC, 40DC, 40HC, REEFER, 45FT</li>
+                <li>• <strong>193 Bookings:</strong> 18 global trade lanes with delay penalties</li>
+                <li>• <strong>3-Hop Transshipment:</strong> Enhanced NetworkBuilder path discovery</li>
+                <li>• <strong>12-Week Historical Data:</strong> Calibrated forecast errors & SS</li>
               </ul>
             </div>
 
-            <button
-              disabled
-              className="w-full bg-slate-100 text-slate-400 font-semibold text-xs py-2.5 px-4 rounded-xl border border-slate-200 cursor-not-allowed text-center block mt-4"
+            <Link
+              href="/test/world2"
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-xs transition-all text-center block mt-4"
             >
-              Configure & Seed World 2
-            </button>
+              🌐 Launch World 2 Lab Workbench
+            </Link>
           </div>
 
           {/* World 3 Card */}
