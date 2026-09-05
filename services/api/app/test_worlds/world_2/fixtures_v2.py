@@ -323,95 +323,202 @@ _SERVICES: Dict[str, dict] = {
 # Booking patterns per service:
 # (origin, destination, ctype, qty, priority_str, cargo_offset_before_departure)
 _BOOKING_PATTERNS: Dict[str, List[tuple]] = {
+    # ──────────────────────────────────────────────────────────────────────────
+    # AEX1  MV Ever Quantum 20,000 TEU  |  China → Europe  (70% pre+bk target)
+    # Free after pre-booked: ~14,000 TEU per leg → load ~9,000 TEU in bookings
+    # ──────────────────────────────────────────────────────────────────────────
     "AEX1": [
-        ("CNSHA", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 340, "CRITICAL", 3),
-        ("CNSHA", "DEHAM",  ContainerType.DRY_40FT,       200, "HIGH",     3),
-        ("CNSHA", "BEANR",  ContainerType.DRY_20FT,       150, "NORMAL",   2),
-        ("KRPUS", "NLRTM",  ContainerType.DRY_40FT,       120, "HIGH",     2),
-        ("SGSIN", "DEHAM",  ContainerType.HIGH_CUBE_40FT,  80, "NORMAL",   2),
+        ("CNSHA", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 1800, "CRITICAL", 3),  # 3,600 TEU
+        ("CNSHA", "DEHAM",  ContainerType.HIGH_CUBE_40FT, 1400, "CRITICAL", 3),  # 2,800 TEU
+        ("CNSHA", "BEANR",  ContainerType.DRY_40FT,       1200, "HIGH",     2),  # 2,400 TEU
+        ("CNSHA", "GBFXT",  ContainerType.DRY_20FT,       1500, "HIGH",     2),  # 1,500 TEU
+        ("KRPUS", "NLRTM",  ContainerType.DRY_40FT,        800, "HIGH",     2),  # 1,600 TEU
+        ("KRPUS", "DEHAM",  ContainerType.HIGH_CUBE_40FT,  600, "NORMAL",   2),  # 1,200 TEU
+        ("CNNGB", "NLRTM",  ContainerType.DRY_40FT,        900, "HIGH",     2),  # 1,800 TEU
+        ("SGSIN", "DEHAM",  ContainerType.HIGH_CUBE_40FT,  400, "NORMAL",   2),  #   800 TEU
+        ("HKHKG", "NLRTM",  ContainerType.DRY_40FT,        500, "NORMAL",   2),  # 1,000 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # AEX2  MV Asia Colossus 18,000 TEU  |  China → Europe  (72% target)
+    # Free: ~13,000 TEU per leg → book ~9,400 TEU
+    # ──────────────────────────────────────────────────────────────────────────
     "AEX2": [
-        ("CNTAO", "NLRTM",  ContainerType.DRY_40FT,       280, "HIGH",     3),
-        ("CNSHA", "GBFXT",  ContainerType.HIGH_CUBE_40FT, 240, "CRITICAL", 3),
-        ("HKHKG", "NLRTM",  ContainerType.DRY_20FT,       150, "NORMAL",   2),
-        ("MYPKG", "GBFXT",  ContainerType.DRY_40FT,       100, "NORMAL",   2),
-        ("LKCMB", "FRLEH",  ContainerType.HIGH_CUBE_40FT,  80, "HIGH",     2),
+        ("CNTAO", "NLRTM",  ContainerType.DRY_40FT,       1600, "HIGH",     3),  # 3,200 TEU
+        ("CNSHA", "GBFXT",  ContainerType.HIGH_CUBE_40FT, 1400, "CRITICAL", 3),  # 2,800 TEU
+        ("CNGUZ", "DEHAM",  ContainerType.DRY_40FT,       1100, "HIGH",     2),  # 2,200 TEU
+        ("HKHKG", "NLRTM",  ContainerType.DRY_20FT,       1200, "NORMAL",   2),  # 1,200 TEU
+        ("MYPKG", "GBFXT",  ContainerType.DRY_40FT,        700, "NORMAL",   2),  # 1,400 TEU
+        ("LKCMB", "FRLEH",  ContainerType.HIGH_CUBE_40FT,  600, "HIGH",     2),  # 1,200 TEU
+        ("CNNGB", "BEANR",  ContainerType.HIGH_CUBE_40FT,  700, "HIGH",     2),  # 1,400 TEU
+        ("SGSIN", "NLRTM",  ContainerType.DRY_40FT,        500, "NORMAL",   2),  # 1,000 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # TPX1  MV Pacific Titan 14,000 TEU  |  China → US West Coast  (80% target)
+    # Free: ~9,520 TEU → book ~6,720 TEU  — OVERBOOKED: forces leasing
+    # ──────────────────────────────────────────────────────────────────────────
     "TPX1": [
-        ("CNSHA", "USLAX",  ContainerType.HIGH_CUBE_40FT, 400, "CRITICAL", 3),
-        ("CNNGB", "USLAX",  ContainerType.DRY_40FT,       250, "HIGH",     2),
-        ("HKHKG", "USLAX",  ContainerType.DRY_20FT,       150, "NORMAL",   2),
+        ("CNSHA", "USLAX",  ContainerType.HIGH_CUBE_40FT, 1800, "CRITICAL", 3),  # 3,600 TEU
+        ("CNSHA", "USNYC",  ContainerType.HIGH_CUBE_40FT, 1200, "CRITICAL", 3),  # 2,400 TEU
+        ("CNNGB", "USLAX",  ContainerType.DRY_40FT,       1100, "HIGH",     2),  # 2,200 TEU
+        ("CNTAO", "USLAX",  ContainerType.DRY_40FT,        900, "HIGH",     2),  # 1,800 TEU
+        ("HKHKG", "USLAX",  ContainerType.DRY_20FT,        800, "NORMAL",   2),  #   800 TEU
+        ("KRPUS", "USLAX",  ContainerType.DRY_40FT,        700, "HIGH",     2),  # 1,400 TEU
+        ("CNSHA", "USLAX",  ContainerType.REEFER_40FT,     350, "CRITICAL", 3),  #   700 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # TPX2  MV Eastern Giant 13,500 TEU  |  NE Asia → US  (78% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "TPX2": [
-        ("KRPUS", "USLAX",  ContainerType.DRY_40FT,       350, "HIGH",     2),
-        ("TWKHH", "USNYC",  ContainerType.HIGH_CUBE_40FT, 200, "CRITICAL", 2),
-        ("PHMNL", "USLAX",  ContainerType.DRY_20FT,       100, "NORMAL",   2),
+        ("KRPUS", "USLAX",  ContainerType.DRY_40FT,       1600, "HIGH",     2),  # 3,200 TEU
+        ("TWKHH", "USNYC",  ContainerType.HIGH_CUBE_40FT, 1200, "CRITICAL", 2),  # 2,400 TEU
+        ("JPTYO", "USLAX",  ContainerType.DRY_40FT,        900, "HIGH",     2),  # 1,800 TEU
+        ("JPOSA", "USLAX",  ContainerType.HIGH_CUBE_40FT,  700, "NORMAL",   2),  # 1,400 TEU
+        ("PHMNL", "USLAX",  ContainerType.DRY_20FT,        600, "NORMAL",   2),  #   600 TEU
+        ("KRPUS", "USNYC",  ContainerType.REEFER_40FT,     300, "HIGH",     2),  #   600 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # TPX3  MV Pacific Trader 6,000 TEU  |  US → China return  (74% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "TPX3": [
-        ("USLAX", "CNSHA",  ContainerType.HIGH_CUBE_40FT, 280, "HIGH",     3),
-        ("TWKHH", "CNSHA",  ContainerType.DRY_40FT,       200, "NORMAL",   2),
+        ("USLAX", "CNSHA",  ContainerType.HIGH_CUBE_40FT,  800, "HIGH",     3),  # 1,600 TEU
+        ("USLAX", "CNNGB",  ContainerType.DRY_40FT,        700, "NORMAL",   2),  # 1,400 TEU
+        ("TWKHH", "CNSHA",  ContainerType.DRY_40FT,        600, "NORMAL",   2),  # 1,200 TEU
+        ("USNYC", "CNSHA",  ContainerType.DRY_20FT,        700, "NORMAL",   2),  #   700 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # AME1  MV Global Express 12,000 TEU  |  China/SE-Asia → Middle East  (80%)
+    # India/South Asia demand concentrated here — CREATES SHORTAGE at CNSHA/SGSIN
+    # ──────────────────────────────────────────────────────────────────────────
     "AME1": [
-        ("CNSHA", "AEDXB",  ContainerType.HIGH_CUBE_40FT, 290, "CRITICAL", 3),
-        ("SGSIN", "AEDXB",  ContainerType.DRY_40FT,       190, "HIGH",     2),
-        ("LKCMB", "AEDXB",  ContainerType.DRY_20FT,       140, "NORMAL",   2),
-        ("INMAA", "AEDXB",  ContainerType.DRY_40FT,       100, "HIGH",     2),
+        ("CNSHA", "AEDXB",  ContainerType.HIGH_CUBE_40FT, 1600, "CRITICAL", 3),  # 3,200 TEU
+        ("CNSHA", "AEDXB",  ContainerType.DRY_40FT,       1100, "HIGH",     3),  # 2,200 TEU
+        ("SGSIN", "AEDXB",  ContainerType.DRY_40FT,        900, "HIGH",     2),  # 1,800 TEU
+        ("LKCMB", "AEDXB",  ContainerType.DRY_20FT,        700, "NORMAL",   2),  #   700 TEU
+        ("INMAA", "AEDXB",  ContainerType.DRY_40FT,        500, "HIGH",     2),  # 1,000 TEU  ← INDIA
+        ("INBOM", "AEDXB",  ContainerType.HIGH_CUBE_40FT,  400, "HIGH",     2),  #   800 TEU  ← INDIA
+        ("HKHKG", "AEDXB",  ContainerType.DRY_40FT,        400, "NORMAL",   2),  #   800 TEU
+        ("CNSHA", "AEDXB",  ContainerType.REEFER_40FT,     200, "CRITICAL", 3),  #   400 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # AME2  MV Ocean Pioneer 11,500 TEU  |  South China/SE-Asia → ME  (76%)
+    # ──────────────────────────────────────────────────────────────────────────
     "AME2": [
-        ("CNGUZ", "AEDXB",  ContainerType.HIGH_CUBE_40FT, 240, "HIGH",     3),
-        ("HKHKG", "AEDXB",  ContainerType.DRY_40FT,       190, "CRITICAL", 2),
-        ("SGSIN", "PKKAR",  ContainerType.DRY_20FT,       100, "NORMAL",   2),
-        ("LKCMB", "AEDXB",  ContainerType.HIGH_CUBE_40FT,  75, "NORMAL",   2),
+        ("CNGUZ", "AEDXB",  ContainerType.HIGH_CUBE_40FT, 1400, "HIGH",     3),  # 2,800 TEU
+        ("HKHKG", "AEDXB",  ContainerType.DRY_40FT,       1100, "CRITICAL", 2),  # 2,200 TEU
+        ("CNSZX", "AEDXB",  ContainerType.DRY_40FT,        900, "HIGH",     2),  # 1,800 TEU
+        ("SGSIN", "PKKAR",  ContainerType.DRY_20FT,        700, "NORMAL",   2),  #   700 TEU
+        ("LKCMB", "AEDXB",  ContainerType.HIGH_CUBE_40FT,  500, "NORMAL",   2),  # 1,000 TEU
+        ("INMAA", "PKKAR",  ContainerType.DRY_40FT,        400, "NORMAL",   2),  #   800 TEU  ← INDIA
+        ("INBOM", "PKKAR",  ContainerType.DRY_20FT,        500, "NORMAL",   2),  #   500 TEU  ← INDIA
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # IAF1  MV Silk Road 3,500 TEU  |  Intra-Asia  (75% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "IAF1": [
-        ("SGSIN", "IDJKT",  ContainerType.DRY_20FT,       200, "NORMAL",   2),
-        ("PHMNL", "VNSAG",  ContainerType.DRY_40FT,       150, "HIGH",     2),
+        ("SGSIN", "IDJKT",  ContainerType.DRY_20FT,        650, "NORMAL",   2),  #   650 TEU
+        ("PHMNL", "VNSAG",  ContainerType.DRY_40FT,        450, "HIGH",     2),  #   900 TEU
+        ("THBKK", "IDJKT",  ContainerType.DRY_40FT,        350, "NORMAL",   2),  #   700 TEU
+        ("VNSAG", "SGSIN",  ContainerType.DRY_20FT,        300, "LOW",      1),  #   300 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # IAF2  MV Pearl River 3,200 TEU  |  Intra-Asia  (72% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "IAF2": [
-        ("SGSIN", "VNHPH",  ContainerType.DRY_20FT,       175, "NORMAL",   2),
-        ("THBKK", "MYPKG",  ContainerType.DRY_40FT,       120, "HIGH",     2),
+        ("SGSIN", "VNHPH",  ContainerType.DRY_20FT,        550, "NORMAL",   2),  #   550 TEU
+        ("THBKK", "MYPKG",  ContainerType.DRY_40FT,        450, "HIGH",     2),  #   900 TEU
+        ("MYPKG", "VNHPH",  ContainerType.DRY_20FT,        300, "LOW",      1),  #   300 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # EAX1  MV Atlantic Bridge 8,500 TEU  |  Europe → Americas  (70% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "EAX1": [
-        ("NLRTM", "USNYC",  ContainerType.HIGH_CUBE_40FT, 295, "HIGH",     3),
-        ("DEHAM", "USSAV",  ContainerType.DRY_40FT,       200, "CRITICAL", 2),
-        ("BEANR", "USHOU",  ContainerType.DRY_20FT,       150, "NORMAL",   2),
-        ("GBFXT", "USNYC",  ContainerType.HIGH_CUBE_40FT,  95, "HIGH",     2),
+        ("NLRTM", "USNYC",  ContainerType.HIGH_CUBE_40FT,  900, "HIGH",     3),  # 1,800 TEU
+        ("DEHAM", "USSAV",  ContainerType.DRY_40FT,        800, "CRITICAL", 2),  # 1,600 TEU
+        ("BEANR", "USHOU",  ContainerType.DRY_20FT,        700, "NORMAL",   2),  #   700 TEU
+        ("GBFXT", "USNYC",  ContainerType.HIGH_CUBE_40FT,  500, "HIGH",     2),  # 1,000 TEU
+        ("FRLEH", "USNYC",  ContainerType.DRY_40FT,        400, "NORMAL",   2),  #   800 TEU
+        ("NLRTM", "USSAV",  ContainerType.DRY_45FT,        200, "HIGH",     2),  #   450 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # EAX2  MV Mediterranean Star 8,000 TEU  |  Europe → S. America  (68%)
+    # ──────────────────────────────────────────────────────────────────────────
     "EAX2": [
-        ("NLRTM", "BRSSZ",  ContainerType.DRY_40FT,       240, "HIGH",     3),
-        ("ESBCN", "BRSSZ",  ContainerType.HIGH_CUBE_40FT, 190, "NORMAL",   2),
-        ("GRPIR", "EGPSD",  ContainerType.DRY_20FT,       100, "NORMAL",   2),
-        ("FRLEH", "BRVIX",  ContainerType.DRY_40FT,        75, "HIGH",     2),
+        ("NLRTM", "BRSSZ",  ContainerType.DRY_40FT,        900, "HIGH",     3),  # 1,800 TEU
+        ("ESBCN", "BRSSZ",  ContainerType.HIGH_CUBE_40FT,  700, "NORMAL",   2),  # 1,400 TEU
+        ("GRPIR", "EGPSD",  ContainerType.DRY_20FT,        500, "NORMAL",   2),  #   500 TEU
+        ("FRLEH", "BRVIX",  ContainerType.DRY_40FT,        400, "HIGH",     2),  #   800 TEU
+        ("DEHAM", "BRSSZ",  ContainerType.DRY_45FT,        200, "HIGH",     2),  #   450 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # AFX1  MV Cape Trader 2,000 TEU  |  Africa  (70% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "AFX1": [
-        ("EGPSD", "ZADUR",  ContainerType.DRY_40FT,       145, "HIGH",     3),
-        ("MAPTM", "NGAPP",  ContainerType.DRY_20FT,        95, "NORMAL",   2),
+        ("EGPSD", "ZADUR",  ContainerType.DRY_40FT,        350, "HIGH",     3),  #   700 TEU
+        ("MAPTM", "NGAPP",  ContainerType.DRY_20FT,        280, "NORMAL",   2),  #   280 TEU
+        ("ZADUR", "NGAPP",  ContainerType.DRY_40FT,        200, "NORMAL",   2),  #   400 TEU
+        ("KEYSM", "EGPSD",  ContainerType.DRY_20FT,        150, "LOW",      2),  #   150 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # SAF1  MV Bengal Star 2,800 TEU  |  India/Sri Lanka → Middle East  (82%)
+    # INDIA CORRIDOR — designed to create heavy equipment pressure at INMAA/INBOM
+    # ──────────────────────────────────────────────────────────────────────────
     "SAF1": [
-        ("LKCMB", "AEDXB",  ContainerType.DRY_40FT,       195, "HIGH",     2),
-        ("BDCGP", "AEDXB",  ContainerType.DRY_20FT,       145, "NORMAL",   2),
-        ("INMAA", "PKKAR",  ContainerType.DRY_40FT,        95, "NORMAL",   2),
+        ("LKCMB", "AEDXB",  ContainerType.DRY_40FT,        550, "HIGH",     2),  # 1,100 TEU ← India subcontinent
+        ("INMAA", "AEDXB",  ContainerType.HIGH_CUBE_40FT,  450, "CRITICAL", 2),  #   900 TEU ← INDIA
+        ("BDCGP", "AEDXB",  ContainerType.DRY_20FT,        400, "NORMAL",   2),  #   400 TEU
+        ("INHAL", "AEDXB",  ContainerType.DRY_40FT,        350, "HIGH",     2),  #   700 TEU ← INDIA
+        ("INMAA", "PKKAR",  ContainerType.DRY_40FT,        250, "NORMAL",   2),  #   500 TEU ← INDIA
+        ("PKKAR", "AEDXB",  ContainerType.DRY_20FT,        300, "NORMAL",   2),  #   300 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # SAF2  MV Malabar Express 2,500 TEU  |  Middle East → India return  (80%)
+    # Return corridor — brings equipment back from Gulf to India
+    # ──────────────────────────────────────────────────────────────────────────
     "SAF2": [
-        ("AEDXB", "INMAA",  ContainerType.HIGH_CUBE_40FT, 195, "HIGH",     2),
-        ("PKKAR", "INMAA",  ContainerType.DRY_20FT,       145, "NORMAL",   2),
-        ("INBOM", "LKCMB",  ContainerType.DRY_40FT,        95, "HIGH",     2),
+        ("AEDXB", "INMAA",  ContainerType.HIGH_CUBE_40FT,  500, "HIGH",     2),  # 1,000 TEU
+        ("AEDXB", "INBOM",  ContainerType.DRY_40FT,        400, "HIGH",     2),  #   800 TEU
+        ("PKKAR", "INMAA",  ContainerType.DRY_20FT,        350, "NORMAL",   2),  #   350 TEU
+        ("INBOM", "LKCMB",  ContainerType.DRY_40FT,        250, "HIGH",     2),  #   500 TEU
+        ("AEDXB", "INHAL",  ContainerType.DRY_40FT,        200, "NORMAL",   2),  #   400 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # OCX1  MV Southern Cross 6,800 TEU  |  SE-Asia → Oceania  (72%)
+    # ──────────────────────────────────────────────────────────────────────────
     "OCX1": [
-        ("SGSIN", "AUMEL",  ContainerType.DRY_40FT,       195, "HIGH",     3),
-        ("PHMNL", "AUSYD",  ContainerType.HIGH_CUBE_40FT, 145, "NORMAL",   2),
+        ("SGSIN", "AUMEL",  ContainerType.DRY_40FT,        800, "HIGH",     3),  # 1,600 TEU
+        ("PHMNL", "AUSYD",  ContainerType.HIGH_CUBE_40FT,  600, "NORMAL",   2),  # 1,200 TEU
+        ("IDJKT", "AUMEL",  ContainerType.DRY_20FT,        500, "NORMAL",   2),  #   500 TEU
+        ("SGSIN", "NZAKL",  ContainerType.DRY_40FT,        400, "NORMAL",   3),  #   800 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # MEF1  MV Arabian Falcon 2,200 TEU  |  Intra-Gulf  (75% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "MEF1": [
-        ("AEDXB", "SADAM",  ContainerType.DRY_20FT,        95, "NORMAL",   2),
+        ("AEDXB", "SADAM",  ContainerType.DRY_20FT,        400, "NORMAL",   2),  #   400 TEU
+        ("AEDXB", "KWKWI",  ContainerType.DRY_40FT,        250, "NORMAL",   2),  #   500 TEU
+        ("SADAM", "IQUMQ",  ContainerType.DRY_20FT,        200, "LOW",      2),  #   200 TEU
+        ("OMPOR", "AEDXB",  ContainerType.DRY_40FT,        150, "NORMAL",   2),  #   300 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # WEX1  MV Indian Ocean 7,500 TEU  |  Intra-Europe  (70% target)
+    # ──────────────────────────────────────────────────────────────────────────
     "WEX1": [
-        ("NLRTM", "GRPIR",  ContainerType.DRY_40FT,       175, "HIGH",     3),
-        ("DEHAM", "ESBCN",  ContainerType.HIGH_CUBE_40FT, 115, "NORMAL",   2),
+        ("NLRTM", "GRPIR",  ContainerType.DRY_40FT,        700, "HIGH",     3),  # 1,400 TEU
+        ("DEHAM", "ESBCN",  ContainerType.HIGH_CUBE_40FT,  600, "NORMAL",   2),  # 1,200 TEU
+        ("BEANR", "ITGOA",  ContainerType.DRY_20FT,        550, "NORMAL",   2),  #   550 TEU
+        ("NLRTM", "PLGDY",  ContainerType.DRY_40FT,        400, "NORMAL",   2),  #   800 TEU
+        ("GBFXT", "GRPIR",  ContainerType.HIGH_CUBE_40FT,  300, "LOW",      2),  #   600 TEU
+        ("FRLEH", "ESBCN",  ContainerType.DRY_40FT,        250, "LOW",      2),  #   500 TEU
     ],
+    # ──────────────────────────────────────────────────────────────────────────
+    # SAM1  MV Eastern Pioneer 5,500 TEU  |  US → South America  (74%)
+    # ──────────────────────────────────────────────────────────────────────────
     "SAM1": [
-        ("USNYC", "BRSSZ",  ContainerType.DRY_40FT,       195, "HIGH",     2),
-        ("USSAV", "BRVIX",  ContainerType.HIGH_CUBE_40FT, 145, "NORMAL",   2),
-        ("USHOU", "COBUN",  ContainerType.DRY_20FT,        95, "NORMAL",   2),
+        ("USNYC", "BRSSZ",  ContainerType.DRY_40FT,        700, "HIGH",     2),  # 1,400 TEU
+        ("USSAV", "BRVIX",  ContainerType.HIGH_CUBE_40FT,  550, "NORMAL",   2),  # 1,100 TEU
+        ("USHOU", "COBUN",  ContainerType.DRY_20FT,        500, "NORMAL",   2),  #   500 TEU
+        ("USHOU", "BRSSZ",  ContainerType.DRY_40FT,        400, "HIGH",     2),  #   800 TEU
+        ("PAMIT", "BRSSZ",  ContainerType.DRY_20FT,        300, "LOW",      2),  #   300 TEU
     ],
 }
 
@@ -421,6 +528,91 @@ _PRIORITY_MAP = {
     "NORMAL":   BookingPriority.NORMAL,
     "LOW":      BookingPriority.LOW,
 }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STRESS BOOKINGS — hardcoded extra demand that deliberately creates shortages
+# at the major export hubs, forcing the MILP to reposition empties or lease.
+# Each entry: (booking_id, origin, dest, ctype, qty, cargo_ready, cutoff, deadline, priority, wt_mt)
+# ──────────────────────────────────────────────────────────────────────────────
+_STRESS_BOOKINGS_RAW: List[tuple] = [
+    # ── CNSHA surge — drains Shanghai 40HC and 40DC stock on days 1-15 ────────
+    ("BK2-S001", "CNSHA", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 420, 1,  3,  40, "CRITICAL", 20.9),
+    ("BK2-S002", "CNSHA", "DEHAM",  ContainerType.HIGH_CUBE_40FT, 380, 2,  4,  38, "CRITICAL", 20.9),
+    ("BK2-S003", "CNSHA", "USLAX",  ContainerType.HIGH_CUBE_40FT, 450, 1,  3,  35, "CRITICAL", 20.9),
+    ("BK2-S004", "CNSHA", "USNYC",  ContainerType.DRY_40FT,       350, 3,  5,  38, "CRITICAL", 21.8),
+    ("BK2-S005", "CNSHA", "AEDXB",  ContainerType.DRY_40FT,       300, 1,  3,  32, "HIGH",     21.8),
+    ("BK2-S006", "CNSHA", "GBFXT",  ContainerType.DRY_40FT,       280, 4,  6,  40, "HIGH",     21.8),
+    ("BK2-S007", "CNSHA", "BEANR",  ContainerType.DRY_20FT,       500, 2,  4,  38, "HIGH",     14.2),
+    ("BK2-S008", "CNSHA", "NLRTM",  ContainerType.DRY_40FT,       320, 5,  7,  42, "HIGH",     21.8),
+    ("BK2-S009", "CNSHA", "DEHAM",  ContainerType.DRY_20FT,       450, 3,  5,  38, "NORMAL",   14.2),
+    ("BK2-S010", "CNSHA", "FRLEH",  ContainerType.HIGH_CUBE_40FT, 210, 6,  8,  42, "HIGH",     20.9),
+    # ── CNNGB / CNTAO surge ────────────────────────────────────────────────────
+    ("BK2-S011", "CNNGB", "USLAX",  ContainerType.HIGH_CUBE_40FT, 390, 2,  4,  35, "CRITICAL", 20.9),
+    ("BK2-S012", "CNNGB", "NLRTM",  ContainerType.DRY_40FT,       310, 1,  3,  38, "HIGH",     21.8),
+    ("BK2-S013", "CNTAO", "DEHAM",  ContainerType.HIGH_CUBE_40FT, 340, 3,  5,  40, "HIGH",     20.9),
+    ("BK2-S014", "CNTAO", "USLAX",  ContainerType.DRY_40FT,       290, 4,  6,  38, "CRITICAL", 21.8),
+    ("BK2-S015", "CNTAO", "NLRTM",  ContainerType.DRY_20FT,       420, 2,  4,  40, "HIGH",     14.2),
+    # ── HKHKG surge ────────────────────────────────────────────────────────────
+    ("BK2-S016", "HKHKG", "USLAX",  ContainerType.HIGH_CUBE_40FT, 360, 1,  3,  35, "CRITICAL", 20.9),
+    ("BK2-S017", "HKHKG", "NLRTM",  ContainerType.DRY_40FT,       290, 2,  4,  40, "HIGH",     21.8),
+    ("BK2-S018", "HKHKG", "AEDXB",  ContainerType.DRY_40FT,       250, 3,  5,  35, "HIGH",     21.8),
+    ("BK2-S019", "HKHKG", "GBFXT",  ContainerType.HIGH_CUBE_40FT, 200, 5,  7,  42, "NORMAL",   20.9),
+    # ── KRPUS surge ────────────────────────────────────────────────────────────
+    ("BK2-S020", "KRPUS", "USLAX",  ContainerType.DRY_40FT,       400, 1,  3,  35, "CRITICAL", 21.8),
+    ("BK2-S021", "KRPUS", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 310, 2,  4,  40, "HIGH",     20.9),
+    ("BK2-S022", "KRPUS", "DEHAM",  ContainerType.DRY_20FT,       380, 4,  6,  42, "HIGH",     14.2),
+    # ── SGSIN surge ────────────────────────────────────────────────────────────
+    ("BK2-S023", "SGSIN", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 340, 2,  4,  38, "CRITICAL", 20.9),
+    ("BK2-S024", "SGSIN", "DEHAM",  ContainerType.DRY_40FT,       280, 3,  5,  40, "HIGH",     21.8),
+    ("BK2-S025", "SGSIN", "AEDXB",  ContainerType.HIGH_CUBE_40FT, 240, 1,  3,  32, "HIGH",     20.9),
+    ("BK2-S026", "SGSIN", "USNYC",  ContainerType.DRY_40FT,       220, 5,  7,  42, "NORMAL",   21.8),
+    ("BK2-S027", "SGSIN", "AUMEL",  ContainerType.DRY_40FT,       195, 4,  6,  35, "HIGH",     21.8),
+    # ── NLRTM import-turns-export: Rotterdam HC shortage ───────────────────────
+    ("BK2-S028", "NLRTM", "USNYC",  ContainerType.HIGH_CUBE_40FT, 380, 1,  3,  35, "CRITICAL", 20.9),
+    ("BK2-S029", "NLRTM", "USSAV",  ContainerType.DRY_40FT,       300, 2,  4,  38, "HIGH",     21.8),
+    ("BK2-S030", "NLRTM", "BRSSZ",  ContainerType.DRY_40FT,       260, 3,  5,  42, "HIGH",     21.8),
+    ("BK2-S031", "DEHAM", "USNYC",  ContainerType.HIGH_CUBE_40FT, 320, 1,  3,  38, "CRITICAL", 20.9),
+    ("BK2-S032", "DEHAM", "USLAX",  ContainerType.DRY_40FT,       260, 4,  6,  42, "HIGH",     21.8),
+    ("BK2-S033", "BEANR", "USHOU",  ContainerType.DRY_20FT,       440, 2,  4,  40, "HIGH",     14.2),
+    # ── USLAX / USNYC return surge: drain US inventories ──────────────────────
+    ("BK2-S034", "USLAX", "CNSHA",  ContainerType.HIGH_CUBE_40FT, 350, 5,  7,  42, "HIGH",     20.9),
+    ("BK2-S035", "USLAX", "CNNGB",  ContainerType.DRY_40FT,       280, 6,  8,  44, "NORMAL",   21.8),
+    ("BK2-S036", "USNYC", "BRSSZ",  ContainerType.DRY_40FT,       310, 3,  5,  40, "HIGH",     21.8),
+    ("BK2-S037", "USNYC", "BRVIX",  ContainerType.HIGH_CUBE_40FT, 240, 4,  6,  42, "NORMAL",   20.9),
+    ("BK2-S038", "USSAV", "BRVIX",  ContainerType.HIGH_CUBE_40FT, 200, 5,  7,  44, "NORMAL",   20.9),
+    ("BK2-S039", "USHOU", "COBUN",  ContainerType.DRY_20FT,       280, 3,  5,  40, "HIGH",     14.2),
+    # ── AEDXB / Jebel Ali outbound surge ───────────────────────────────────────
+    ("BK2-S040", "AEDXB", "NLRTM",  ContainerType.DRY_40FT,       250, 8, 10,  45, "HIGH",     21.8),
+    ("BK2-S041", "AEDXB", "INMAA",  ContainerType.HIGH_CUBE_40FT, 210, 5,  7,  40, "HIGH",     20.9),
+    ("BK2-S042", "AEDXB", "PKKAR",  ContainerType.DRY_20FT,       300, 4,  6,  38, "NORMAL",   14.2),
+    ("BK2-S043", "AEDXB", "SADAM",  ContainerType.DRY_20FT,       200, 3,  5,  35, "NORMAL",   14.2),
+    # ── LKCMB / Colombo transship surge ────────────────────────────────────────
+    ("BK2-S044", "LKCMB", "AEDXB",  ContainerType.DRY_40FT,       280, 2,  4,  35, "HIGH",     21.8),
+    ("BK2-S045", "LKCMB", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 220, 6,  8,  45, "HIGH",     20.9),
+    ("BK2-S046", "INMAA", "AEDXB",  ContainerType.DRY_40FT,       230, 3,  5,  38, "HIGH",     21.8),
+    ("BK2-S047", "INBOM", "AEDXB",  ContainerType.DRY_40FT,       200, 2,  4,  36, "HIGH",     21.8),
+    ("BK2-S048", "INMAA", "LKCMB",  ContainerType.HIGH_CUBE_40FT, 165, 4,  6,  38, "NORMAL",   20.9),
+    # ── Reefer demand at cold-chain ports ──────────────────────────────────────
+    ("BK2-S049", "AUMEL", "JPTYO",  ContainerType.REEFER_40FT,    180, 5,  7,  42, "CRITICAL", 18.5),
+    ("BK2-S050", "AUSYD", "SGSIN",  ContainerType.REEFER_40FT,    150, 4,  6,  40, "HIGH",     18.5),
+    ("BK2-S051", "NZAKL", "JPTYO",  ContainerType.REEFER_40FT,    120, 6,  8,  44, "HIGH",     18.5),
+    ("BK2-S052", "CNSHA", "USNYC",  ContainerType.REEFER_40FT,    200, 3,  5,  40, "CRITICAL", 18.5),
+    # ── 45FT pallet-wide surge (Europe to Americas) ────────────────────────────
+    ("BK2-S053", "NLRTM", "USHOU",  ContainerType.DRY_45FT,       150, 4,  6,  42, "HIGH",     20.2),
+    ("BK2-S054", "DEHAM", "USNYC",  ContainerType.DRY_45FT,       130, 3,  5,  40, "HIGH",     20.2),
+    ("BK2-S055", "BEANR", "USSAV",  ContainerType.DRY_45FT,       110, 5,  7,  44, "NORMAL",   20.2),
+    # ── Late-horizon second wave — days 30-60 ──────────────────────────────────
+    ("BK2-S056", "CNSHA", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 400, 30, 32,  65, "CRITICAL", 20.9),
+    ("BK2-S057", "CNSHA", "USLAX",  ContainerType.DRY_40FT,       360, 32, 34,  65, "CRITICAL", 21.8),
+    ("BK2-S058", "KRPUS", "USNYC",  ContainerType.HIGH_CUBE_40FT, 310, 35, 37,  68, "HIGH",     20.9),
+    ("BK2-S059", "SGSIN", "DEHAM",  ContainerType.DRY_40FT,       290, 28, 30,  62, "HIGH",     21.8),
+    ("BK2-S060", "HKHKG", "NLRTM",  ContainerType.HIGH_CUBE_40FT, 320, 30, 32,  65, "HIGH",     20.9),
+    ("BK2-S061", "CNNGB", "BEANR",  ContainerType.DRY_40FT,       280, 35, 37,  68, "HIGH",     21.8),
+    ("BK2-S062", "CNTAO", "DEHAM",  ContainerType.HIGH_CUBE_40FT, 250, 40, 42,  72, "NORMAL",   20.9),
+    ("BK2-S063", "NLRTM", "USNYC",  ContainerType.DRY_40FT,       230, 30, 32,  62, "HIGH",     21.8),
+    ("BK2-S064", "DEHAM", "BRSSZ",  ContainerType.DRY_40FT,       200, 35, 37,  68, "NORMAL",   21.8),
+    ("BK2-S065", "USLAX", "CNSHA",  ContainerType.HIGH_CUBE_40FT, 280, 40, 42,  72, "HIGH",     20.9),
+]
 
 
 # ============================================================
@@ -593,7 +785,7 @@ def _build_voyage_legs(horizon: int) -> List[VoyageLegFixture]:
 
 
 def _build_bookings(horizon: int) -> List[BookingFixture]:
-    """Auto-generate bookings from service patterns across all rotations."""
+    """Auto-generate bookings from service patterns + stress bookings that create shortages."""
     bookings: List[BookingFixture] = []
     bk_num = 1
     for svc_code, patterns in _BOOKING_PATTERNS.items():
@@ -627,6 +819,25 @@ def _build_bookings(horizon: int) -> List[BookingFixture]:
                     cargo_weight_mt=wt,
                 ))
                 bk_num += 1
+
+    # ── Append stress bookings (hardcoded to create deliberate shortages) ──
+    for row in _STRESS_BOOKINGS_RAW:
+        bid, origin, dest, ctype, qty, cargo_ready, cutoff, deadline, prio_str, wt = row
+        if cargo_ready > horizon or cutoff > horizon:
+            continue
+        bookings.append(BookingFixture(
+            booking_id=bid,
+            origin_unlocode=origin,
+            destination_unlocode=dest,
+            container_type=ctype,
+            quantity=qty,
+            cargo_ready_day=cargo_ready,
+            cutoff_day=cutoff,
+            delivery_deadline_day=deadline,
+            priority=_PRIORITY_MAP[prio_str],
+            cargo_weight_mt=wt,
+        ))
+
     return bookings
 
 
@@ -956,7 +1167,19 @@ def _build_initial_inventory(
     ports: Dict[str, PortFixture],
     ctypes: Dict[ContainerType, ContainerTypeSpec],
 ) -> Dict[Tuple[str, ContainerType], int]:
-    """Initial empty container inventory at t=0 based on port throughput tier."""
+    """
+    Initial empty container inventory at t=0.
+    Major export hubs (CNSHA, CNNGB, CNTAO, HKHKG, KRPUS, SGSIN, NLRTM, DEHAM)
+    start with REDUCED stock (≈40% of normal) to guarantee shortages and force
+    the MILP to either reposition empties or lease containers.
+    """
+    # Ports where we deliberately under-stock to create pressure
+    _TIGHT_STOCK_PORTS = {
+        "CNSHA", "CNNGB", "CNTAO", "CNSZX", "CNGUZ",
+        "HKHKG", "TWKHH", "KRPUS", "SGSIN",
+        "NLRTM", "DEHAM", "BEANR", "GBFXT",
+        "USLAX", "USNYC",
+    }
     inv: Dict[Tuple[str, ContainerType], int] = {}
     for p in ports:
         tier = _PORT_TIER.get(p, 0.25)
@@ -966,7 +1189,10 @@ def _build_initial_inventory(
             # 4-6 weeks of inventory at base demand rate
             weeks_stock = 4.0 + tier * 2.0
             qty = int(tier * share * _BASE_DAILY_DEMAND * 7 * weeks_stock)
-            inv[(p, k)] = max(10, qty)
+            if p in _TIGHT_STOCK_PORTS:
+                # Reduce to ~40% — guarantees demand will outrun stock early
+                qty = int(qty * 0.40)
+            inv[(p, k)] = max(5, qty)
     return inv
 
 

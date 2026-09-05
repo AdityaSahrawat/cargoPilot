@@ -543,6 +543,139 @@ def get_world_1_day_snapshot(day_number: int, db: Session = Depends(get_test_db)
 # ============================================================
 
 
+def _build_voyage_util(data, sol) -> List[Dict]:
+    """Compute per-leg capacity breakdown from a solved MILPSolution."""
+    leg_laden_teu: Dict[str, float] = {}
+    leg_laden_mt:  Dict[str, float] = {}
+    leg_empty_teu: Dict[str, float] = {}
+    leg_empty_mt:  Dict[str, float] = {}
+
+    booking_map = {b.booking_id: b for b in data.bookings}
+
+    for bd in sol.booking_decisions:
+        b = booking_map.get(bd.booking_id)
+        if not b:
+            continue
+        c_spec = data.container_types[b.container_type]
+        total = bd.owned_quantity + bd.leased_quantity
+        for lid in bd.legs_traversed:
+            leg_laden_teu[lid] = leg_laden_teu.get(lid, 0.0) + total * c_spec.teu_factor
+            leg_laden_mt[lid]  = leg_laden_mt.get(lid,  0.0) + total * c_spec.total_laden_weight_mt
+
+    for rd in sol.repositioning_decisions:
+        c_spec = data.container_types[rd.container_type]
+        leg_empty_teu[rd.leg_id] = leg_empty_teu.get(rd.leg_id, 0.0) + rd.quantity * c_spec.teu_factor
+        leg_empty_mt[rd.leg_id]  = leg_empty_mt.get(rd.leg_id,  0.0) + rd.quantity * c_spec.tare_weight_mt
+
+    voyages: Dict[str, Dict] = {}
+    for leg in sorted(data.voyage_legs, key=lambda l: l.departure_day):
+        vn = leg.voyage_number
+        if vn not in voyages:
+            voyages[vn] = {
+                "voyage_number": vn,
+                "vessel_name":   leg.vessel_name,
+                "service_code":  "_".join(vn.split("_")[1:-1]),   # VOY_AEX1_R2 → AEX1
+                "rotation":      vn.split("_")[-1],               # R1, R2, …
+                "legs": [],
+            }
+        laden_teu    = round(leg_laden_teu.get(leg.leg_id, 0.0), 1)
+        empty_teu    = round(leg_empty_teu.get(leg.leg_id, 0.0), 1)
+        pre_teu      = float(leg.booked_capacity_teu)
+        used_teu     = laden_teu + empty_teu + pre_teu
+        free_teu     = max(0.0, leg.capacity_teu - used_teu)
+
+        laden_mt     = round(leg_laden_mt.get(leg.leg_id, 0.0), 1)
+        empty_mt     = round(leg_empty_mt.get(leg.leg_id, 0.0), 1)
+        pre_mt       = float(leg.booked_weight_mt)
+        used_mt      = laden_mt + empty_mt + pre_mt
+        free_mt      = max(0.0, leg.capacity_weight_mt - used_mt)
+
+        util_pct     = round(used_teu / leg.capacity_teu * 100, 1) if leg.capacity_teu else 0.0
+        wt_pct       = round(used_mt  / leg.capacity_weight_mt * 100, 1) if leg.capacity_weight_mt else 0.0
+
+        voyages[vn]["legs"].append({
+            "leg_id":              leg.leg_id,
+            "from_port":           leg.from_port_unlocode,
+            "to_port":             leg.to_port_unlocode,
+            "departure_day":       leg.departure_day,
+            "arrival_day":         leg.arrival_day,
+            "transit_days":        leg.transit_days,
+            # TEU breakdown
+            "capacity_teu":        leg.capacity_teu,
+            "pre_booked_teu":      pre_teu,
+            "laden_booking_teu":   laden_teu,
+            "empty_reposition_teu": empty_teu,
+            "total_used_teu":      round(used_teu, 1),
+            "free_teu":            round(free_teu, 1),
+            "utilization_pct":     util_pct,
+            # Weight breakdown (MT)
+            "capacity_mt":         leg.capacity_weight_mt,
+            "pre_booked_mt":       pre_mt,
+            "laden_booking_mt":    laden_mt,
+            "empty_reposition_mt": empty_mt,
+            "total_used_mt":       round(used_mt, 1),
+            "free_mt":             round(free_mt, 1),
+            "weight_utilization_pct": wt_pct,
+        })
+    return list(voyages.values())
+
+
+
+@router.get("/world-2/voyages")
+def get_world_2_voyages():
+    """
+    Returns all 67 voyages (18 services × recurring rotations) with per-leg capacity info.
+    Before solving: shows raw fixture capacity and pre-booked (3rd-party) slots.
+    Use POST /world-2/solve-milp to get laden/empty/free breakdown post-optimisation.
+    """
+    data = get_world_2_dataset()
+    voyages: Dict[str, Dict] = {}
+    for leg in sorted(data.voyage_legs, key=lambda l: l.departure_day):
+        vn = leg.voyage_number
+        if vn not in voyages:
+            voyages[vn] = {
+                "voyage_number": vn,
+                "vessel_name":   leg.vessel_name,
+                "service_code":  "_".join(vn.split("_")[1:-1]),
+                "rotation":      vn.split("_")[-1],
+                "capacity_teu":  leg.capacity_teu,
+                "capacity_mt":   leg.capacity_weight_mt,
+                "legs": [],
+            }
+        pre_teu = float(leg.booked_capacity_teu)
+        pre_mt  = float(leg.booked_weight_mt)
+        voyages[vn]["legs"].append({
+            "leg_id":               leg.leg_id,
+            "from_port":            leg.from_port_unlocode,
+            "to_port":              leg.to_port_unlocode,
+            "departure_day":        leg.departure_day,
+            "arrival_day":          leg.arrival_day,
+            "transit_days":         leg.transit_days,
+            "capacity_teu":         leg.capacity_teu,
+            "capacity_mt":          leg.capacity_weight_mt,
+            "pre_booked_teu":       pre_teu,
+            "pre_booked_mt":        pre_mt,
+            "available_teu":        leg.capacity_teu - pre_teu,
+            "available_mt":         leg.capacity_weight_mt - pre_mt,
+            "pre_utilization_pct":  round(pre_teu / leg.capacity_teu * 100, 1) if leg.capacity_teu else 0.0,
+            # Post-solve fields (null until solver runs)
+            "laden_booking_teu":    None,
+            "empty_reposition_teu": None,
+            "free_teu":             None,
+            "utilization_pct":      None,
+            "laden_booking_mt":     None,
+            "empty_reposition_mt":  None,
+            "free_mt":              None,
+            "weight_utilization_pct": None,
+        })
+    return {
+        "status": "pre_solve",
+        "total_voyages": len(voyages),
+        "total_legs": len(data.voyage_legs),
+        "voyages": list(voyages.values()),
+    }
+
+
 @router.get("/world-2/summary")
 def get_world_2_summary():
     """Returns the full World 2 fixture summary (55 ports, 18 vessels, 349 legs, 193 bookings)."""
@@ -766,4 +899,5 @@ def solve_world_2_milp(time_limit: int = 120):
                 1 for bd in sol.booking_decisions if bd.delay_days > 0.5
             ),
         },
+        "voyage_utilization": _build_voyage_util(data, sol),
     }

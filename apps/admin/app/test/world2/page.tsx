@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const API = "http://localhost:8000/api/v1/simulation";
 
-type Tab = "OVERVIEW" | "NETWORK" | "BOOKINGS" | "MILP_SOLVER" | "HISTORY";
+type Tab = "OVERVIEW" | "NETWORK" | "BOOKINGS" | "VOYAGES" | "MILP_SOLVER" | "HISTORY";
 type RegionFilter = "ALL" | "ASIA" | "EUROPE" | "AMERICAS" | "MIDEAST" | "AFRICA" | "SOUTH_ASIA" | "OCEANIA";
 
 const REGION_COLORS: Record<string, string> = {
@@ -49,20 +49,30 @@ export default function World2WorkbenchPage() {
   const [summary, setSummary] = useState<any>(null);
   const [solution, setSolution] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [voyageData, setVoyageData] = useState<any>(null);
   const [solving, setSolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [regionFilter, setRegionFilter] = useState<RegionFilter>("ALL");
   const [timeLimit, setTimeLimit] = useState(120);
   const [solveProgress, setSolveProgress] = useState("");
+  const [expandedVoyages, setExpandedVoyages] = useState<Set<string>>(new Set());
+  const [serviceFilter, setServiceFilter] = useState<string>("ALL");
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/world-2/summary`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const [sumRes, voyRes] = await Promise.all([
+        fetch(`${API}/world-2/summary`),
+        fetch(`${API}/world-2/voyages`),
+      ]);
+      if (!sumRes.ok) throw new Error(`HTTP ${sumRes.status}`);
+      const data = await sumRes.json();
       setSummary(data);
+      if (voyRes.ok) {
+        const vd = await voyRes.json();
+        setVoyageData(vd);
+      }
     } catch (e: any) {
       setError("Failed to load World 2 data. Is the API running?");
     } finally {
@@ -80,6 +90,14 @@ export default function World2WorkbenchPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setSolution(data);
+      // Merge post-solve voyage utilization back into voyageData
+      if (data.voyage_utilization) {
+        setVoyageData((prev: any) => ({
+          ...prev,
+          status: "post_solve",
+          voyages: data.voyage_utilization,
+        }));
+      }
       setSolveProgress("");
     } catch (e: any) {
       setError("Solver failed. Check API logs.");
@@ -88,6 +106,14 @@ export default function World2WorkbenchPage() {
       setSolving(false);
     }
   }, [timeLimit]);
+
+  const toggleVoyage = (vn: string) => {
+    setExpandedVoyages(prev => {
+      const next = new Set(prev);
+      if (next.has(vn)) next.delete(vn); else next.add(vn);
+      return next;
+    });
+  };
 
   React.useEffect(() => { loadSummary(); }, [loadSummary]);
 
@@ -99,9 +125,24 @@ export default function World2WorkbenchPage() {
     { id: "OVERVIEW",    label: "Overview",       icon: "📊" },
     { id: "NETWORK",     label: "Global Network", icon: "🌍" },
     { id: "BOOKINGS",    label: "Bookings",        icon: "📦" },
+    { id: "VOYAGES",     label: "Voyages & Capacity", icon: "⚓" },
     { id: "MILP_SOLVER", label: "MILP Solver",     icon: "⚡" },
     { id: "HISTORY",     label: "Historical Data", icon: "📈" },
   ];
+
+  // Unique service codes from voyage data
+  const serviceCodes = React.useMemo(() => {
+    if (!voyageData?.voyages) return [];
+    const codes = new Set<string>(voyageData.voyages.map((v: any) => v.service_code));
+    return ["ALL", ...Array.from(codes).sort()];
+  }, [voyageData]);
+
+  const filteredVoyages = React.useMemo(() => {
+    if (!voyageData?.voyages) return [];
+    return serviceFilter === "ALL"
+      ? voyageData.voyages
+      : voyageData.voyages.filter((v: any) => v.service_code === serviceFilter);
+  }, [voyageData, serviceFilter]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
@@ -580,6 +621,229 @@ export default function World2WorkbenchPage() {
                   </div>
                 )}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════
+            VOYAGES TAB — per-voyage capacity accordion
+        ══════════════════════════════════════════════════════════════ */}
+        {activeTab === "VOYAGES" && (
+          <div className="space-y-4">
+            {/* Status banner */}
+            <div className={`rounded-xl px-4 py-3 border text-xs font-medium flex items-center justify-between ${
+              voyageData?.status === "post_solve"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-amber-50 border-amber-200 text-amber-800"
+            }`}>
+              <span>
+                {voyageData?.status === "post_solve"
+                  ? "✅ Showing post-solve capacity (laden + empty from MILP solution)"
+                  : "⚠️ Pre-solve view — run the MILP solver to see laden/empty/free breakdown"}
+              </span>
+              <span className="text-[10px] opacity-70">
+                {voyageData?.total_voyages} voyages · {voyageData?.total_legs} legs
+              </span>
+            </div>
+
+            {/* Service filter chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {serviceCodes.map(code => (
+                <button
+                  key={code}
+                  onClick={() => setServiceFilter(code)}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                    serviceFilter === code
+                      ? "bg-violet-600 text-white border-violet-600"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-violet-400 hover:text-violet-700"
+                  }`}
+                >
+                  {code}
+                </button>
+              ))}
+              <button
+                onClick={() => setExpandedVoyages(new Set(filteredVoyages.map((v: any) => v.voyage_number)))}
+                className="px-3 py-1 rounded-full text-[11px] font-bold border bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 transition-all ml-2"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={() => setExpandedVoyages(new Set())}
+                className="px-3 py-1 rounded-full text-[11px] font-bold border bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 transition-all"
+              >
+                Collapse All
+              </button>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-4 text-[11px] font-semibold">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-slate-400 inline-block"/><span className="text-slate-600">Pre-booked (3rd party)</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-indigo-500 inline-block"/><span className="text-slate-600">Laden (CargoPilot bookings)</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-400 inline-block"/><span className="text-slate-600">Empty reposition</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-400 inline-block"/><span className="text-slate-600">Free space</span></span>
+            </div>
+
+            {/* Voyage accordions */}
+            <div className="space-y-2">
+              {filteredVoyages.map((voyage: any) => {
+                const isOpen = expandedVoyages.has(voyage.voyage_number);
+                // Compute summary stats across all legs
+                const totalCapTeu = voyage.legs.reduce((s: number, l: any) => s + (l.capacity_teu ?? 0), 0);
+                const totalUsedTeu = voyage.legs.reduce((s: number, l: any) => {
+                  const pre   = l.pre_booked_teu ?? 0;
+                  const laden = l.laden_booking_teu ?? 0;
+                  const empty = l.empty_reposition_teu ?? 0;
+                  return s + pre + laden + empty;
+                }, 0);
+                const avgUtil = totalCapTeu > 0 ? Math.round(totalUsedTeu / totalCapTeu * 100) : 0;
+                const isSolved = voyage.legs[0]?.laden_booking_teu !== null && voyage.legs[0]?.laden_booking_teu !== undefined;
+
+                return (
+                  <div key={voyage.voyage_number} className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+                    {/* Accordion header (click to expand) */}
+                    <button
+                      onClick={() => toggleVoyage(voyage.voyage_number)}
+                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-base">{isOpen ? "▼" : "▶"}</span>
+                        <div>
+                          <span className="font-bold text-slate-900 text-sm">{voyage.voyage_number}</span>
+                          <span className="ml-2 text-[10px] text-slate-400 font-mono">{voyage.vessel_name}</span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200">
+                          {voyage.service_code} · {voyage.rotation}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          {voyage.legs.length} leg{voyage.legs.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {/* Mini utilisation bar */}
+                        <div className="hidden sm:flex items-center gap-2">
+                          <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                avgUtil > 85 ? "bg-red-400" : avgUtil > 60 ? "bg-amber-400" : "bg-emerald-400"
+                              }`}
+                              style={{ width: `${Math.min(avgUtil, 100)}%` }}
+                            />
+                          </div>
+                          <span className={`text-[11px] font-bold ${
+                            avgUtil > 85 ? "text-red-600" : avgUtil > 60 ? "text-amber-600" : "text-emerald-600"
+                          }`}>{avgUtil}%</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-medium">{Math.round(totalUsedTeu)}/{totalCapTeu} TEU</span>
+                      </div>
+                    </button>
+
+                    {/* Expanded legs */}
+                    {isOpen && (
+                      <div className="border-t border-slate-100">
+                        <table className="w-full text-xs">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wide">Leg</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wide">Route</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wide">Days</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wide">Cap TEU</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wide">Pre-booked</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-bold text-indigo-400 uppercase tracking-wide">Laden</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-bold text-amber-400 uppercase tracking-wide">Empty</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-bold text-emerald-500 uppercase tracking-wide">Free</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wide w-40">Capacity Bar</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wide">Wt. Util%</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                            {voyage.legs.map((leg: any) => {
+                              const preTeu   = leg.pre_booked_teu ?? 0;
+                              const ladenTeu = leg.laden_booking_teu ?? 0;
+                              const emptyTeu = leg.empty_reposition_teu ?? 0;
+                              const freeTeu  = leg.free_teu ?? (leg.capacity_teu - preTeu);
+                              const cap      = leg.capacity_teu || 1;
+
+                              const preW   = Math.min((preTeu   / cap) * 100, 100);
+                              const ladenW = Math.min((ladenTeu / cap) * 100, 100);
+                              const emptyW = Math.min((emptyTeu / cap) * 100, 100);
+                              const freeW  = Math.max(0, 100 - preW - ladenW - emptyW);
+
+                              const util = leg.utilization_pct ?? leg.pre_utilization_pct ?? 0;
+
+                              return (
+                                <tr key={leg.leg_id} className="hover:bg-violet-50/20 transition-colors">
+                                  <td className="px-3 py-2 font-mono text-[10px] text-slate-400">{leg.leg_id.split("_").slice(-2).join("_")}</td>
+                                  <td className="px-3 py-2">
+                                    <span className="font-bold text-violet-700">{leg.from_port}</span>
+                                    <span className="text-slate-400 mx-1">→</span>
+                                    <span className="font-bold text-violet-700">{leg.to_port}</span>
+                                  </td>
+                                  <td className="px-3 py-2 text-center text-slate-500">D{leg.departure_day}→D{leg.arrival_day}</td>
+                                  <td className="px-3 py-2 text-center font-black text-slate-800">{leg.capacity_teu}</td>
+                                  <td className="px-3 py-2 text-center text-slate-500 font-semibold">{preTeu}</td>
+                                  <td className={`px-3 py-2 text-center font-bold ${isSolved ? "text-indigo-700" : "text-slate-300"}`}>
+                                    {isSolved ? ladenTeu : "—"}
+                                  </td>
+                                  <td className={`px-3 py-2 text-center font-bold ${isSolved ? "text-amber-600" : "text-slate-300"}`}>
+                                    {isSolved ? emptyTeu : "—"}
+                                  </td>
+                                  <td className={`px-3 py-2 text-center font-bold ${isSolved ? "text-emerald-600" : "text-slate-300"}`}>
+                                    {isSolved ? Math.round(freeTeu) : "—"}
+                                  </td>
+                                  <td className="px-3 py-2 w-40">
+                                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                                      {/* Pre-booked (grey) */}
+                                      {preW > 0 && (
+                                        <div className="h-full bg-slate-400 transition-all" style={{ width: `${preW}%` }} title={`Pre-booked: ${preTeu} TEU`}/>
+                                      )}
+                                      {/* Laden (indigo) */}
+                                      {ladenW > 0 && (
+                                        <div className="h-full bg-indigo-500 transition-all" style={{ width: `${ladenW}%` }} title={`Laden: ${ladenTeu} TEU`}/>
+                                      )}
+                                      {/* Empty (amber) */}
+                                      {emptyW > 0 && (
+                                        <div className="h-full bg-amber-400 transition-all" style={{ width: `${emptyW}%` }} title={`Empty: ${emptyTeu} TEU`}/>
+                                      )}
+                                      {/* Free (emerald) */}
+                                      {freeW > 0 && (
+                                        <div className="h-full bg-emerald-400 transition-all" style={{ width: `${freeW}%` }} title={`Free: ${Math.round(freeTeu)} TEU`}/>
+                                      )}
+                                    </div>
+                                    <div className="text-[9px] text-slate-400 mt-0.5 text-center">{util}%</div>
+                                  </td>
+                                  <td className={`px-3 py-2 text-center text-[11px] font-bold ${
+                                    (leg.weight_utilization_pct ?? 0) > 85 ? "text-red-600" :
+                                    (leg.weight_utilization_pct ?? 0) > 60 ? "text-amber-600" : "text-slate-500"
+                                  }`}>
+                                    {leg.weight_utilization_pct !== null && leg.weight_utilization_pct !== undefined
+                                      ? `${leg.weight_utilization_pct}%`
+                                      : `${leg.pre_utilization_pct}%`
+                                    }
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+
+                        {/* Leg weight detail summary */}
+                        {isSolved && (
+                          <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-4 text-[11px] text-slate-600">
+                            <span><strong className="text-slate-400">Pre-booked:</strong> {voyage.legs.reduce((s: number, l: any) => s + (l.pre_booked_mt ?? 0), 0).toFixed(0)} MT</span>
+                            <span><strong className="text-indigo-500">Laden:</strong> {voyage.legs.reduce((s: number, l: any) => s + (l.laden_booking_mt ?? 0), 0).toFixed(0)} MT</span>
+                            <span><strong className="text-amber-500">Empty:</strong> {voyage.legs.reduce((s: number, l: any) => s + (l.empty_reposition_mt ?? 0), 0).toFixed(0)} MT</span>
+                            <span><strong className="text-emerald-500">Free:</strong> {voyage.legs.reduce((s: number, l: any) => s + (l.free_mt ?? 0), 0).toFixed(0)} MT</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {filteredVoyages.length === 0 && (
+              <div className="text-center py-12 text-slate-400 text-sm">No voyages found for this service.</div>
             )}
           </div>
         )}
