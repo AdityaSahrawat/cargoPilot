@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const API = "http://localhost:8000/api/v1/simulation";
 
-type Tab = "OVERVIEW" | "NETWORK" | "BOOKINGS" | "VOYAGES" | "MILP_SOLVER" | "HISTORY";
+type Tab = "OVERVIEW" | "NETWORK" | "BOOKINGS" | "VOYAGES" | "DATA_QA" | "MILP_SOLVER" | "HISTORY";
 type RegionFilter = "ALL" | "ASIA" | "EUROPE" | "AMERICAS" | "MIDEAST" | "AFRICA" | "SOUTH_ASIA" | "OCEANIA";
 
 const REGION_COLORS: Record<string, string> = {
@@ -50,6 +50,10 @@ export default function World2WorkbenchPage() {
   const [solution, setSolution] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [voyageData, setVoyageData] = useState<any>(null);
+  const [qaReport, setQaReport] = useState<any>(null);
+  const [qaLoading, setQaLoading] = useState(false);
+  const [qaFilter, setQaFilter] = useState<"ALL" | "ERROR" | "WARNING" | "INFO">("ALL");
+  const [qaCategory, setQaCategory] = useState<string>("ALL");
   const [solving, setSolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [regionFilter, setRegionFilter] = useState<RegionFilter>("ALL");
@@ -115,6 +119,23 @@ export default function World2WorkbenchPage() {
     });
   };
 
+  const runQA = useCallback(async () => {
+    setQaLoading(true);
+    setQaReport(null);
+    try {
+      const res = await fetch(`${API}/world-2/validate`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setQaReport(data);
+      setQaFilter("ALL");
+      setQaCategory("ALL");
+    } catch (e: any) {
+      setError("QA validation failed. Is the API running?");
+    } finally {
+      setQaLoading(false);
+    }
+  }, []);
+
   React.useEffect(() => { loadSummary(); }, [loadSummary]);
 
   const filteredPorts = summary?.ports?.filter((p: any) =>
@@ -122,12 +143,13 @@ export default function World2WorkbenchPage() {
   ) ?? [];
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: "OVERVIEW",    label: "Overview",       icon: "📊" },
-    { id: "NETWORK",     label: "Global Network", icon: "🌍" },
-    { id: "BOOKINGS",    label: "Bookings",        icon: "📦" },
+    { id: "OVERVIEW",    label: "Overview",          icon: "📊" },
+    { id: "NETWORK",     label: "Global Network",    icon: "🌍" },
+    { id: "BOOKINGS",    label: "Bookings",           icon: "📦" },
     { id: "VOYAGES",     label: "Voyages & Capacity", icon: "⚓" },
-    { id: "MILP_SOLVER", label: "MILP Solver",     icon: "⚡" },
-    { id: "HISTORY",     label: "Historical Data", icon: "📈" },
+    { id: "DATA_QA",     label: "Data QA",            icon: "🔍" },
+    { id: "MILP_SOLVER", label: "MILP Solver",        icon: "⚡" },
+    { id: "HISTORY",     label: "Historical Data",    icon: "📈" },
   ];
 
   // Unique service codes from voyage data
@@ -469,6 +491,184 @@ export default function World2WorkbenchPage() {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════
+            DATA QA TAB
+        ══════════════════════════════════════════════════════════════ */}
+        {activeTab === "DATA_QA" && (
+          <div className="space-y-4">
+            {/* Run button */}
+            {!qaReport && (
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs text-center space-y-3">
+                <div className="text-3xl">🔍</div>
+                <h2 className="text-sm font-bold text-slate-900">CargoPilot Data QA Engine</h2>
+                <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+                  Runs 35+ logistics-aware validation rules across bookings, vessels, voyages, ports,
+                  inventory, costs, network topology, and demand forecasts.
+                  Detects statistical anomalies using z-score analysis.
+                </p>
+                <button
+                  onClick={runQA}
+                  disabled={qaLoading}
+                  className="bg-violet-600 hover:bg-violet-700 disabled:bg-slate-300 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-xs transition-all"
+                >
+                  {qaLoading ? "⏳ Running validation…" : "▶ Run Data Validation"}
+                </button>
+              </div>
+            )}
+
+            {qaReport && (() => {
+              const summary = qaReport.summary;
+              const issues: any[] = qaReport.issues ?? [];
+              const catBreakdown = qaReport.category_breakdown ?? {};
+              const categories = ["ALL", ...Object.keys(catBreakdown).sort()];
+
+              const filtered = issues.filter((iss: any) => {
+                const sevOk  = qaFilter   === "ALL" || iss.severity === qaFilter;
+                const catOk  = qaCategory === "ALL" || iss.category === qaCategory;
+                return sevOk && catOk;
+              });
+
+              const sevColor = (s: string) =>
+                s === "ERROR"   ? "text-red-700 bg-red-50 border-red-200" :
+                s === "WARNING" ? "text-amber-700 bg-amber-50 border-amber-200" :
+                                  "text-sky-700 bg-sky-50 border-sky-200";
+              const sevDot = (s: string) =>
+                s === "ERROR" ? "🔴" : s === "WARNING" ? "🟡" : "🔵";
+
+              return (
+                <div className="space-y-4">
+                  {/* Re-run button */}
+                  <div className="flex justify-end">
+                    <button onClick={runQA} disabled={qaLoading}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition-all">
+                      {qaLoading ? "⏳ Running…" : "↺ Re-run Validation"}
+                    </button>
+                  </div>
+
+                  {/* ── QA Report Header ─────────────────────────────────────── */}
+                  <div className={`rounded-xl border-2 p-5 ${qaReport.blocking ? "border-red-300 bg-red-50" : "border-emerald-300 bg-emerald-50"}`}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h2 className="font-black text-lg text-slate-900">
+                          {qaReport.blocking ? "🚨 Validation BLOCKING" : "✅ Validation Passed"}
+                        </h2>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          {qaReport.blocking
+                            ? "Dataset has ERRORs — do NOT send to optimizer until resolved."
+                            : "No blocking errors. Dataset is safe to optimise."}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {new Date(qaReport.generated_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+
+                    {/* Big stats row */}
+                    <div className="mt-4 grid grid-cols-5 gap-3">
+                      {[
+                        { label: "Records Processed", value: summary.total_records.toLocaleString(), color: "text-slate-900" },
+                        { label: "Records OK",         value: summary.records_ok.toLocaleString(),   color: "text-emerald-700" },
+                        { label: "Errors",             value: summary.errors,                        color: "text-red-700" },
+                        { label: "Warnings",           value: summary.warnings,                      color: "text-amber-700" },
+                        { label: "Info",               value: summary.infos,                         color: "text-sky-700" },
+                      ].map(st => (
+                        <div key={st.label} className="bg-white rounded-lg p-3 border border-slate-100 text-center shadow-xs">
+                          <div className={`text-2xl font-black ${st.color}`}>{st.value}</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 font-semibold">{st.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Category Breakdown ───────────────────────────────────── */}
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <h3 className="text-xs font-bold text-slate-700">Category Breakdown</h3>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-px bg-slate-100">
+                      {Object.entries(catBreakdown).map(([cat, info]: [string, any]) => (
+                        <button
+                          key={cat}
+                          onClick={() => setQaCategory(qaCategory === cat ? "ALL" : cat)}
+                          className={`bg-white p-3 text-left hover:bg-violet-50 transition-colors ${qaCategory === cat ? "ring-2 ring-violet-400 ring-inset" : ""}`}
+                        >
+                          <div className="text-[11px] font-bold text-slate-700">{cat}</div>
+                          <div className="text-[10px] mt-1 space-x-2">
+                            {info.errors > 0 && <span className="text-red-600 font-bold">{info.errors}E</span>}
+                            {info.warnings > 0 && <span className="text-amber-600 font-bold">{info.warnings}W</span>}
+                            {info.infos > 0 && <span className="text-sky-600">{info.infos}I</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Filter chips ─────────────────────────────────────────── */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] text-slate-500 font-semibold">Filter:</span>
+                    {(["ALL", "ERROR", "WARNING", "INFO"] as const).map(sev => (
+                      <button key={sev} onClick={() => setQaFilter(sev)}
+                        className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                          qaFilter === sev
+                            ? sev === "ERROR"   ? "bg-red-600 text-white border-red-600"
+                            : sev === "WARNING" ? "bg-amber-500 text-white border-amber-500"
+                            : sev === "INFO"    ? "bg-sky-600 text-white border-sky-600"
+                            : "bg-violet-600 text-white border-violet-600"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-violet-400"
+                        }`}
+                      >
+                        {sev === "ALL" ? `All (${issues.length})` : `${sevDot(sev)} ${sev} (${issues.filter((i: any) => i.severity === sev).length})`}
+                      </button>
+                    ))}
+                    {qaCategory !== "ALL" && (
+                      <button onClick={() => setQaCategory("ALL")}
+                        className="px-2 py-1 rounded-full text-[11px] text-violet-700 border border-violet-300 bg-violet-50 font-semibold">
+                        ✕ {qaCategory}
+                      </button>
+                    )}
+                    <span className="text-[10px] text-slate-400 ml-2">{filtered.length} shown</span>
+                  </div>
+
+                  {/* ── Issue list ───────────────────────────────────────────── */}
+                  <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
+                    {filtered.map((iss: any, idx: number) => (
+                      <div key={idx} className={`rounded-xl border p-3.5 ${sevColor(iss.severity)}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="text-[10px] font-black tracking-widest uppercase">{iss.severity}</span>
+                              <span className="text-[10px] font-bold bg-white/60 px-1.5 py-0.5 rounded border border-current/20">{iss.category}</span>
+                              <span className="text-[10px] font-mono text-current/60">{iss.rule_id}</span>
+                              <span className="text-[10px] font-mono bg-white/40 px-1.5 py-0.5 rounded">{iss.entity_id}</span>
+                            </div>
+                            <p className="text-xs font-medium leading-snug">{iss.message}</p>
+                          </div>
+                        </div>
+                        {/* Context drilldown */}
+                        {Object.keys(iss.context ?? {}).length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-current/10 flex flex-wrap gap-x-4 gap-y-0.5">
+                            {Object.entries(iss.context).map(([k, v]: [string, any]) => (
+                              <span key={k} className="text-[10px] font-mono">
+                                <span className="opacity-60">{k}:</span>{" "}
+                                <span className="font-bold">{typeof v === "number" ? v.toLocaleString() : String(v)}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {filtered.length === 0 && (
+                      <div className="text-center py-8 text-slate-400 text-sm">
+                        No issues match the current filter.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 

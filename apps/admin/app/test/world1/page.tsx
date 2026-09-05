@@ -200,7 +200,27 @@ export default function World1Page() {
   const [loading, setLoading] = useState<boolean>(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [statusToast, setStatusToast] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"EXECUTIVE_REPORT" | "FLEET_SCHEDULE" | "DB_ADMIN">("EXECUTIVE_REPORT");
+  const [activeTab, setActiveTab] = useState<"EXECUTIVE_REPORT" | "FLEET_SCHEDULE" | "DB_ADMIN" | "DATA_QA">("EXECUTIVE_REPORT");
+
+  // Data QA state
+  const [qaReport, setQaReport] = useState<any>(null);
+  const [qaLoading, setQaLoading] = useState<boolean>(false);
+  const [qaFilter, setQaFilter] = useState<"ALL" | "ERROR" | "WARNING" | "INFO">("ALL");
+  const [qaCategory, setQaCategory] = useState<string>("ALL");
+
+  const runQA = useCallback(async () => {
+    setQaLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/simulation/world-1/validate`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setQaReport(data);
+    } catch (e: any) {
+      alert("QA error: " + e.message);
+    } finally {
+      setQaLoading(false);
+    }
+  }, []);
 
   // Dropdown states
   const [selectedPortFilter, setSelectedPortFilter] = useState<string>("ALL");
@@ -564,6 +584,16 @@ export default function World1Page() {
               }`}
             >
               🛠️ Live SQLite Data Editor
+            </button>
+            <button
+              onClick={() => setActiveTab("DATA_QA")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === "DATA_QA"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              🔍 Data Validation QA
             </button>
           </div>
 
@@ -1442,6 +1472,183 @@ export default function World1Page() {
             </div>
           </div>
         )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4: DATA VALIDATION QA */}
+        {/* ========================================================================= */}
+        {activeTab === "DATA_QA" && (
+          <div className="space-y-4">
+            {/* Run button */}
+            {!qaReport && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-xs text-center space-y-3">
+                <div className="text-3xl">🔍</div>
+                <h2 className="text-sm font-bold text-slate-900">CargoPilot Data QA Engine — World 1</h2>
+                <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+                  Runs 35+ logistics-aware validation rules across bookings, vessels, voyages, ports,
+                  inventory, and costs for the 4-port 40-day World 1 scenario.
+                </p>
+                <button
+                  onClick={runQA}
+                  disabled={qaLoading}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-xs transition-all"
+                >
+                  {qaLoading ? "⏳ Running validation…" : "▶ Run Data Validation"}
+                </button>
+              </div>
+            )}
+
+            {qaReport && (() => {
+              const summary = qaReport.summary;
+              const issues: any[] = qaReport.issues ?? [];
+              const catBreakdown = qaReport.category_breakdown ?? {};
+
+              const filtered = issues.filter((iss: any) => {
+                const sevOk  = qaFilter   === "ALL" || iss.severity === qaFilter;
+                const catOk  = qaCategory === "ALL" || iss.category === qaCategory;
+                return sevOk && catOk;
+              });
+
+              const sevColor = (s: string) =>
+                s === "ERROR"   ? "text-red-700 bg-red-50 border-red-200" :
+                s === "WARNING" ? "text-amber-700 bg-amber-50 border-amber-200" :
+                                  "text-sky-700 bg-sky-50 border-sky-200";
+              const sevDot = (s: string) =>
+                s === "ERROR" ? "🔴" : s === "WARNING" ? "🟡" : "🔵";
+
+              return (
+                <div className="space-y-4">
+                  {/* Re-run button */}
+                  <div className="flex justify-end">
+                    <button onClick={runQA} disabled={qaLoading}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 transition-all">
+                      {qaLoading ? "⏳ Running…" : "↺ Re-run Validation"}
+                    </button>
+                  </div>
+
+                  {/* ── QA Report Header ─────────────────────────────────────── */}
+                  <div className={`rounded-xl border-2 p-5 ${qaReport.blocking ? "border-red-300 bg-red-50" : "border-emerald-300 bg-emerald-50"}`}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h2 className="font-black text-lg text-slate-900">
+                          {qaReport.blocking ? "🚨 Validation BLOCKING" : "✅ Validation Passed"}
+                        </h2>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          {qaReport.blocking
+                            ? "Dataset has ERRORs — do NOT send to optimizer until resolved."
+                            : "No blocking errors. Dataset is safe to optimise."}
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {new Date(qaReport.generated_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+
+                    {/* Big stats row */}
+                    <div className="mt-4 grid grid-cols-5 gap-3">
+                      {[
+                        { label: "Records Processed", value: summary.total_records.toLocaleString(), color: "text-slate-900" },
+                        { label: "Records OK",         value: summary.records_ok.toLocaleString(),   color: "text-emerald-700" },
+                        { label: "Errors",             value: summary.errors,                        color: "text-red-700" },
+                        { label: "Warnings",           value: summary.warnings,                      color: "text-amber-700" },
+                        { label: "Info",               value: summary.infos,                         color: "text-sky-700" },
+                      ].map(st => (
+                        <div key={st.label} className="bg-white rounded-lg p-3 border border-slate-100 text-center shadow-xs">
+                          <div className={`text-2xl font-black ${st.color}`}>{st.value}</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 font-semibold">{st.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Category Breakdown ───────────────────────────────────── */}
+                  <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100">
+                      <h3 className="text-xs font-bold text-slate-700">Category Breakdown</h3>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-px bg-slate-100">
+                      {Object.entries(catBreakdown).map(([cat, info]: [string, any]) => (
+                        <button
+                          key={cat}
+                          onClick={() => setQaCategory(qaCategory === cat ? "ALL" : cat)}
+                          className={`bg-white p-3 text-left hover:bg-indigo-50 transition-colors ${qaCategory === cat ? "ring-2 ring-indigo-400 ring-inset" : ""}`}
+                        >
+                          <div className="text-[11px] font-bold text-slate-700">{cat}</div>
+                          <div className="text-[10px] mt-1 space-x-2">
+                            {info.errors > 0 && <span className="text-red-600 font-bold">{info.errors}E</span>}
+                            {info.warnings > 0 && <span className="text-amber-600 font-bold">{info.warnings}W</span>}
+                            {info.infos > 0 && <span className="text-sky-600">{info.infos}I</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Filter chips ─────────────────────────────────────────── */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] text-slate-500 font-semibold">Filter:</span>
+                    {(["ALL", "ERROR", "WARNING", "INFO"] as const).map(sev => (
+                      <button key={sev} onClick={() => setQaFilter(sev)}
+                        className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                          qaFilter === sev
+                            ? sev === "ERROR"   ? "bg-red-600 text-white border-red-600"
+                            : sev === "WARNING" ? "bg-amber-500 text-white border-amber-500"
+                            : sev === "INFO"    ? "bg-sky-600 text-white border-sky-600"
+                            : "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-indigo-400"
+                        }`}
+                      >
+                        {sev === "ALL" ? `All (${issues.length})` : `${sevDot(sev)} ${sev} (${issues.filter((i: any) => i.severity === sev).length})`}
+                      </button>
+                    ))}
+                    {qaCategory !== "ALL" && (
+                      <button onClick={() => setQaCategory("ALL")}
+                        className="px-2 py-1 rounded-full text-[11px] text-indigo-700 border border-indigo-300 bg-indigo-50 font-semibold">
+                        ✕ {qaCategory}
+                      </button>
+                    )}
+                    <span className="text-[10px] text-slate-400 ml-2">{filtered.length} shown</span>
+                  </div>
+
+                  {/* ── Issue list ───────────────────────────────────────────── */}
+                  <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
+                    {filtered.map((iss: any, idx: number) => (
+                      <div key={idx} className={`rounded-xl border p-3.5 ${sevColor(iss.severity)}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="text-[10px] font-black tracking-widest uppercase">{iss.severity}</span>
+                              <span className="text-[10px] font-bold bg-white/60 px-1.5 py-0.5 rounded border border-current/20">{iss.category}</span>
+                              <span className="text-[10px] font-mono text-current/60">{iss.rule_id}</span>
+                              <span className="text-[10px] font-mono bg-white/40 px-1.5 py-0.5 rounded">{iss.entity_id}</span>
+                            </div>
+                            <p className="text-xs font-medium leading-snug">{iss.message}</p>
+                          </div>
+                        </div>
+                        {/* Context drilldown */}
+                        {Object.keys(iss.context ?? {}).length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-current/10 flex flex-wrap gap-x-4 gap-y-0.5">
+                            {Object.entries(iss.context).map(([k, v]: [string, any]) => (
+                              <span key={k} className="text-[10px] font-mono">
+                                <span className="opacity-60">{k}:</span>{" "}
+                                <span className="font-bold">{typeof v === "number" ? v.toLocaleString() : String(v)}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {filtered.length === 0 && (
+                      <div className="text-center py-8 text-slate-400 text-sm">
+                        No issues match the current filter.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
 
       </main>
 
