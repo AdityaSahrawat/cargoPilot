@@ -9,6 +9,7 @@ from app.test_worlds.world_1.fixtures import get_world_1_dataset
 from app.test_worlds.world_2.fixtures_v2 import get_world_2_dataset
 from app.optimization.milp_solver import CargoPilotMILPSolver
 from app.simulation.daily_engine import DailySimulationEngine
+from app.validation.data_validator import CargoPilotValidator
 
 router = APIRouter()
 
@@ -539,6 +540,21 @@ def get_world_1_day_snapshot(day_number: int, db: Session = Depends(get_test_db)
 
 
 # ============================================================
+# WORLD 1 DATA VALIDATION ENDPOINT
+# ============================================================
+
+@router.get("/world-1/validate")
+def validate_world_1():
+    """
+    Run the full CargoPilot data validation suite against the World 1 dataset.
+    Returns a structured QA report with ERROR / WARNING / INFO issues.
+    """
+    data = get_world_1_dataset()
+    report = CargoPilotValidator("world_1").validate(data)
+    return report.to_dict()
+
+
+# ============================================================
 # WORLD 2 ENDPOINTS  —  55 Ports, 18 Vessels, 84-Day Horizon
 # ============================================================
 
@@ -619,6 +635,18 @@ def _build_voyage_util(data, sol) -> List[Dict]:
         })
     return list(voyages.values())
 
+
+
+@router.get("/world-2/validate")
+def validate_world_2():
+    """
+    Run the full CargoPilot data validation suite against World 2 (55-port, 84-day).
+    Returns a structured QA report with ERROR / WARNING / INFO issues across:
+    bookings, vessels, voyages, ports, inventory, costs, network, and demand forecasts.
+    """
+    data = get_world_2_dataset()
+    report = CargoPilotValidator("world_2").validate(data)
+    return report.to_dict()
 
 
 @router.get("/world-2/voyages")

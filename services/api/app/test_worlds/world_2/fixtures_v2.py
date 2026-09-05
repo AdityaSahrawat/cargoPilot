@@ -272,9 +272,10 @@ _SERVICES: Dict[str, dict] = {
     # ── Africa ─────────────────────────────────────────────────────────────
     "AFX1": {
         "vessel": "MV Cape Trader",
-        "first_start": 8, "cycle": 23, "rotations": 4,
+        "first_start": 8, "cycle": 42, "rotations": 2,
         "pre_booked_frac": 0.20,
-        "route": [("EGPSD",0),("MAPTM",4),("NGAPP",12),("KEYSM",17),("ZADUR",22)],
+        "route": [("EGPSD",0),("MAPTM",4),("NGAPP",12),("KEYSM",17),("ZADUR",22),
+                  ("KEYSM",26),("NGAPP",31),("MAPTM",37),("EGPSD",41)],
     },
     # ── South Asia Feeders ─────────────────────────────────────────────────
     "SAF1": {
@@ -292,9 +293,10 @@ _SERVICES: Dict[str, dict] = {
     # ── Oceania ────────────────────────────────────────────────────────────
     "OCX1": {
         "vessel": "MV Southern Cross",
-        "first_start": 10, "cycle": 22, "rotations": 4,
+        "first_start": 10, "cycle": 42, "rotations": 2,
         "pre_booked_frac": 0.24,
-        "route": [("SGSIN",0),("PHMNL",4),("AUMEL",14),("AUSYD",17),("NZAKL",21)],
+        "route": [("SGSIN",0),("PHMNL",4),("AUMEL",14),("AUSYD",17),("NZAKL",21),
+                  ("AUSYD",25),("AUMEL",28),("PHMNL",37),("SGSIN",41)],
     },
     # ── Middle East Gulf ───────────────────────────────────────────────────
     "MEF1": {
@@ -595,7 +597,7 @@ _STRESS_BOOKINGS_RAW: List[tuple] = [
     # ── Reefer demand at cold-chain ports ──────────────────────────────────────
     ("BK2-S049", "AUMEL", "JPTYO",  ContainerType.REEFER_40FT,    180, 5,  7,  42, "CRITICAL", 18.5),
     ("BK2-S050", "AUSYD", "SGSIN",  ContainerType.REEFER_40FT,    150, 4,  6,  40, "HIGH",     18.5),
-    ("BK2-S051", "NZAKL", "JPTYO",  ContainerType.REEFER_40FT,    120, 6,  8,  44, "HIGH",     18.5),
+    ("BK2-S051", "NZAKL", "JPTYO",  ContainerType.REEFER_40FT,    120, 28, 30,  65, "HIGH",     18.5),
     ("BK2-S052", "CNSHA", "USNYC",  ContainerType.REEFER_40FT,    200, 3,  5,  40, "CRITICAL", 18.5),
     # ── 45FT pallet-wide surge (Europe to Americas) ────────────────────────────
     ("BK2-S053", "NLRTM", "USHOU",  ContainerType.DRY_45FT,       150, 4,  6,  42, "HIGH",     20.2),
@@ -802,8 +804,9 @@ def _build_bookings(horizon: int) -> List[BookingFixture]:
                 if dep_day > horizon:
                     continue
                 cargo_ready = max(1, dep_day - cargo_off)
-                cutoff = dep_day - 1
-                deadline = arr_day + 6  # 6-day delivery buffer per booking
+                cutoff = max(cargo_ready, dep_day - 1)
+                # Deadline must be >= arrival + delivery buffer AND >= cutoff + 3
+                deadline = max(arr_day + 6, cutoff + 3)
                 wt = 18.0 if ctype in (ContainerType.DRY_40FT, ContainerType.HIGH_CUBE_40FT,
                                         ContainerType.REEFER_40FT, ContainerType.DRY_45FT) else 12.0
                 bookings.append(BookingFixture(
@@ -813,7 +816,7 @@ def _build_bookings(horizon: int) -> List[BookingFixture]:
                     container_type=ctype,
                     quantity=qty,
                     cargo_ready_day=cargo_ready,
-                    cutoff_day=max(cargo_ready, cutoff),
+                    cutoff_day=cutoff,
                     delivery_deadline_day=deadline,
                     priority=_PRIORITY_MAP[prio_str],
                     cargo_weight_mt=wt,
