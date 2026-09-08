@@ -1,9 +1,9 @@
 # CargoPilot Simulation Models & Mathematical Specification
 
 > **Document:** Doc 2 — Simulation Models & Mathematical Specification  
-> **Version:** V0.1 — Working Draft  
-> **Status:** Under Development  
-> **Depends On:** Doc 1 — Simulation Engine Architecture & Behavioral Specification  
+> **Version:** V1.0 — Final for Implementation  
+> **Status:** Implementation Baseline  
+> **Depends On:** [Doc 1 — Simulation Engine Architecture & Behavioral Specification](file:///Users/adityasahrawat/dev/projects/cargoPilot/doc/CargoPilot-Simulation-Engine%E2%80%94Design-Specification.md)  
 
 ---
 
@@ -18,25 +18,25 @@
 7. [Demand Model](#7-demand-model)
 8. [Booking Generation Model](#8-booking-generation-model)
 9. [Allocation & 7-Day Lock Model](#9-allocation--7-day-lock-model)
-10. [Empty Container Flow Model](#10-empty-container-flow-model)
-11. [Import Return Model](#11-import-return-model)
-12. [Equipment Supply & Scarcity Model](#12-equipment-supply--scarcity-model)
-13. [Leasing Model](#13-leasing-model)
-14. [Repositioning Model](#14-repositioning-model)
-15. [Disruption Models](#15-disruption-models)
-16. [Causal & Cascading Effects](#16-causal--cascading-effects)
-17. [Forecasting Model](#17-forecasting-model)
-18. [Information / Visibility Model](#18-information--visibility-model)
-19. [Operational Timeline Model](#19-operational-timeline-model)
-20. [Failure & Exception Models](#20-failure--exception-models)
-21. [Recovery Models](#21-recovery-models)
-22. [Backlog Model](#22-backlog-model)
-23. [Cost Models](#23-cost-models)
-24. [Scenario Models](#24-scenario-models)
-25. [Parameters & Configuration](#25-parameters--configuration)
+10. [Import Return & Equipment Availability Model](#10-import-return--equipment-availability-model)
+11. [Equipment Supply & Scarcity Model](#11-equipment-supply--scarcity-model)
+12. [Leasing Model](#12-leasing-model)
+13. [Repositioning Model](#13-repositioning-model)
+14. [Disruption Models](#14-disruption-models)
+15. [Causal & Cascading Effects](#15-causal--cascading-effects)
+16. [Forecasting Model](#16-forecasting-model)
+17. [Information / Visibility Model](#17-information--visibility-model)
+18. [Operational Timeline Model](#18-operational-timeline-model)
+19. [Failure & Exception Models](#19-failure--exception-models)
+20. [Recovery Models](#20-recovery-models)
+21. [Backlog Model](#21-backlog-model)
+22. [Cost Models](#22-cost-models)
+23. [Scenario Models](#23-scenario-models)
+24. [Parameters & Configuration](#24-parameters--configuration)
+25. [Shared State, PostgreSQL & Kafka Integration](#25-shared-state-postgresql--kafka-integration)
 26. [Calibration & Realism](#26-calibration--realism)
 27. [Validation](#27-validation)
-28. [Mathematical Notation / Formula Registry](#28-mathematical-notation--formula-registry)
+28. [Mathematical Formula Registry](#28-mathematical-formula-registry)
 29. [Model Dependency Map](#29-model-dependency-map)
 30. [V1 vs Future Models](#30-v1-vs-future-models)
 31. [Final Modeling Principle](#final-modeling-principle)
@@ -48,154 +48,175 @@
 ### 1.1 Purpose
 Doc 2 defines the mathematical, probabilistic, behavioral, and state-transition models used by the CargoPilot Simulation Engine.
 
-- **Doc 1 defines:** What exists, how the system is structured, what happens, when it happens, and how components interact.
-- **Doc 2 defines:** How the individual behaviors and transitions are calculated.
+**Doc 1 defines:**
+- What exists
+- System architecture
+- Component responsibilities
+- Simulation execution
+- Event flow
+- Interaction between Simulation Engine and CargoPilot
 
-#### Behavioral Mapping Examples
+**Doc 2 defines:**
+- How individual logistics behaviors are calculated
+- How state changes
+- How uncertainty is represented
+- How operational consequences propagate
+- Which parameters control each model
 
-```text
-DOC 1: Vessel can be delayed by weather
-   ↓
-DOC 2: Weather impact → delay probability / speed reduction factor
-
-DOC 1: Port congestion affects vessel operations
-   ↓
-DOC 2: Port utilization → congestion index → handling & waiting time penalty
-
-DOC 1: Demand generates bookings
-   ↓
-DOC 2: Demand stochastic process → booking generation arrival probability
-```
-
-This structural separation is explicitly established by Doc 1.
+The separation between the two documents must be preserved.
 
 ### 1.2 Core Modeling Principle
-The simulator must produce **operational logistics realism**, rather than low-level physical-world simulation.
+The simulator models operational logistics realism, not detailed physical-world simulation.
 
-#### Scope Included in V1:
-- Vessel movement & transit progression
-- Voyage schedule tracking & delay propagation
-- Port operations, queues, & berth handling
-- Container lifecycle & inventory state transitions
-- Booking generation & commercial demand arrival
-- Equipment availability, shortages, & surplus tracking
-- One-way and master leasing operational execution
-- Empty container repositioning execution
-- Operational disruptions & weather delays
-- Equipment/vessel mechanical failures & recovery
-- Operational cost calculations & KPI recording
+#### V1 models:
+- Vessels
+- Voyages
+- Vessel movement
+- Ports and terminals
+- Containers
+- Equipment
+- Demand
+- Bookings
+- Allocation observation
+- Import returns
+- Equipment availability
+- Equipment scarcity
+- Leasing execution
+- Repositioning execution
+- Disruptions
+- Delays
+- Failures
+- Recovery
+- Backlog
+- Forecasts
+- Information visibility
+- Operational timelines
+- Costs
+- CargoPilot decisions
+- Admin interventions
 
-#### Scope Explicitly Excluded from V1:
-- Detailed ship hydrodynamics & wave drag
-- Engine thermodynamics & fuel combustion curves
-- Detailed ocean physics & 3D fluid dynamics
-- Exact meteorological weather forecasting
-- Low-level container crane kinematics & mechanical stress
-- Individual terminal worker behaviors & shift psychology
-- Full terminal 3D digital-twin physics
+#### V1 does not model:
+- Detailed ship hydrodynamics
+- Engine thermodynamics
+- Individual engine components
+- Detailed ocean physics
+- Exact weather forecasting
+- Detailed crane mechanics
+- Detailed worker behavior
+- Complete terminal digital-twin physics
+
+The objective is to create a sufficiently realistic operational environment in which CargoPilot's planning and optimization decisions can be tested.
 
 ### 1.3 World-State Representation
-Let $S(t)$ represent the complete operational simulation state at simulation time $t$:
+Let $S(t)$ represent the complete operational simulation state at simulation time $t$.
+
+Conceptually:
 
 $$S(t) = \{ P(t), V(t), Y(t), C(t), B(t), D(t), E(t), L(t), A(t), R(t) \}$$
 
-Where:
-- $P(t)$: Port operational states (berths, yards, queues)
-- $V(t)$: Vessel fleet states (positions, loads, speeds)
-- $Y(t)$: Voyage schedules and leg progression
-- $C(t)$: Container equipment inventory and individual unit tracking
-- $B(t)$: Booking orders and customer fulfillment states
-- $D(t)$: Realized and forecasted cargo demand
-- $E(t)$: Equipment supply and availability breakdown per location
-- $L(t)$: Active leasing agreements and leased equipment pools
-- $A(t)$: Allocation states and 7-day commitment locks
-- $R(t)$: Active disruptions, weather events, and scenario overrides
+where:
+- $P(t)$: Port state
+- $V(t)$: Vessel state
+- $Y(t)$: Voyage state
+- $C(t)$: Container state
+- $B(t)$: Booking state
+- $D(t)$: Demand state
+- $E(t)$: Equipment availability state
+- $L(t)$: Leasing state
+- $A(t)$: Allocation state
+- $R(t)$: Disruption/scenario state
 
-*Note: The exact decomposition may evolve as individual sub-models are finalized.*
+The physical persistence of these entities is maintained in the shared CargoPilot PostgreSQL database.
 
 ### 1.4 State Transition
-A simulation event or discrete model execution transforms the world state according to:
+A simulation event or model execution transforms state:
 
-$$S(t^+) = F\bigl(S(t^-), E, \theta, \omega\bigr)$$
+$$S(t^+) = F(S(t^-), E, \theta, \omega)$$
 
-Where:
-- $S(t^-)$: State immediately before the event occurs
-- $S(t^+)$: State immediately after event execution
-- $E$: Ingested event payload
-- $\theta$: Configured model parameters
-- $\omega$: Stochastic outcome drawn from configured probability distributions
-- $F$: State-transition logic for the applicable domain component
+where:
+- $S(t^-)$: State immediately before the event
+- $S(t^+)$: State immediately after the event
+- $E$: Event
+- $\theta$: Configured parameters
+- $\omega$: Stochastic outcome
+- $F$: Applicable model logic
 
-> [!IMPORTANT]
-> The simulator must **never** independently regenerate the world state for each time step. Each advancement begins strictly from the latest valid state $S(t^-)$ and propagates all cumulative operational consequences forward.
+The simulator must never regenerate the world from scratch when advancing time. Every advancement begins from the latest persisted valid state.
 
 ### 1.5 Configurable Model Parameters
-Any behavior that may reasonably require operational tuning, scenario control, experimentation, or calibration must be represented by an **explicitly named configuration parameter** rather than a hardcoded literal.
+Any behavior that may reasonably require:
+- Operational tuning
+- Scenario control
+- Experimentation
+- Calibration
+- Business adjustment
 
-Every model $m$ exposes a parameter set:
+must be represented through an explicitly named parameter rather than an unexplained hardcoded value.
+
+**Examples:**
+- `PORT_BERTH_COUNT[port_id]`
+- `PORT_LOADING_RATE[port_id]`
+- `BOOKING_RATE[origin][destination][equipment_type]`
+- `VESSEL_BASE_SPEED_KNOTS[vessel_class]`
+- `DEMAND_BASE_RATE[origin][destination][equipment_type]`
+- `IMPORT_RETURN_MEAN_DAYS[equipment_type]`
+
+Each model has:
 
 $$\Theta_m = \{ \theta_1, \theta_2, \ldots, \theta_n \}$$
 
-**Examples:**
-- `VESSEL_BASE_SPEED_KNOTS`
-- `VESSEL_SPEED_VARIATION`
-- `PORT_BERTH_COUNT`
-- `PORT_LOADING_RATE`
-- `PORT_DISCHARGE_RATE`
-- `DEMAND_MEAN`
-- `DEMAND_VARIANCE`
-- `LEASE_COST_PER_DAY`
-- `STORM_PROBABILITY`
+where $m$ is the model.
 
 ### 1.6 Parameter Classification
 
-| Type | Admin Controlled | Example | Description |
-| :--- | :---: | :--- | :--- |
-| **Simulation parameter** | Yes | `SIMULATION_START_TIME` | Global simulation clock baseline and bounds |
-| **Scenario parameter** | Yes | `STORM_PROBABILITY` | Experiment/scenario disruption toggles |
-| **Operational parameter** | Yes | `PORT_LOADING_RATE` | Physical infrastructure throughput rates |
-| **Business parameter** | Yes | `LEASE_COST_PER_DAY` | Financial contracts and commercial penalties |
-| **Calibration parameter** | Yes | `VESSEL_DELAY_FACTOR` | Tuning scalar to fit historical real-world data |
-| **Mathematical constant** | No | Unit conversion factors | Fixed constants (e.g., $24\text{ hours/day}$) |
-| **Runtime state** | No | `VESSEL_CURRENT_POSITION` | Evolving state variables of active entities |
-| **Derived value** | No | `VESSEL_ETA` | Computed from distance, speed, and delays |
+Parameters may be classified as:
 
-Admin-editable parameters must specify:
-- Parameter name (UPPER_SNAKE_CASE)
-- Description & operational context
-- Current value & default value
-- Measurement unit (knots, TEU, USD/day, hours, etc.)
-- Minimum & maximum bounds
-- Allowed discrete options (if enum) or distribution family (if stochastic)
-- Editable status & model dependencies
+| Type | Example |
+| :--- | :--- |
+| **Simulation** | `SIMULATION_START_TIME` |
+| **Scenario** | `STORM_PROBABILITY` |
+| **Operational** | `PORT_LOADING_RATE` |
+| **Business** | `LEASE_COST_PER_DAY` |
+| **Calibration** | `VESSEL_DELAY_FACTOR` |
+| **Mathematical** | Unit conversion constant |
+| **Runtime state** | `VESSEL_CURRENT_POSITION` |
+| **Derived value** | `VESSEL_ETA` |
+
+Parameters should contain:
+- Name
+- Model
+- Description
+- Value
+- Unit
+- Default
+- Minimum
+- Maximum
+- Type
+- Distribution if applicable
+- Scope
+- Admin-editable flag
+- Runtime-editable flag
+- Scenario override capability
 
 ### 1.7 General Model Structure
-Every simulation model component conforms to the following input-output pipeline:
+Every simulation model follows:
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│                      INPUT STATE                        │
-│                           +                             │
-│                CONFIGURATION PARAMETERS                 │
-│                           +                             │
-│               EVENTS / EXTERNAL CONDITIONS              │
-│                           +                             │
-│                     RANDOM OUTCOME                      │
-└───────────────────────────┬─────────────────────────────┘
-                            │
-                            ▼
-                    ┌──────────────┐
-                    │ MODEL LOGIC  │
-                    └───────┬──────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                     STATE CHANGES                       │
-│                           +                             │
-│                   GENERATED EVENTS                      │
-│                           +                             │
-│                DOWNSTREAM CONSEQUENCES                  │
-└─────────────────────────────────────────────────────────┘
+Current State
+      +
+Configuration
+      +
+Event / External Condition
+      +
+Random Outcome
+      ↓
+Model Logic
+      ↓
+State Changes
+      +
+Generated Events
+      +
+Downstream Consequences
 ```
 
 ---
@@ -203,782 +224,1340 @@ Every simulation model component conforms to the following input-output pipeline
 ## 2. Simulation Time & Event-Time Calculations
 
 ### 2.1 Simulation Clock
-Simulation time is independent of real-world wall clock time. The simulation engine maintains one authoritative discrete clock:
+The simulator maintains one authoritative virtual clock:
 
 $$T_{\text{sim}}$$
 
+Simulation time is independent of real-world execution time.
+
 **Example:**
-- Current: `2026-09-05 00:00`
-- Next Day: `2026-09-06 00:00`
+```text
+Simulation:
+Day 1 00:00
+      ↓ NEXT DAY
+Day 2 00:00
+```
+The real system may execute this transition in seconds.
 
 ### 2.2 Time Advancement
-For an advancement request from current time $T_{\text{current}}$ to target time $T_{\text{target}}$:
+For an advancement:
 
 $$T_{\text{target}} = T_{\text{current}} + \Delta t$$
 
-In V1, single-step increments satisfy:
+V1 constraint:
 
-$$0 < \Delta t \le 24\text{ hours}$$
+$$0 < \Delta t \le 24\text{h}$$
 
-Supported discrete UI step controls include:
-- `+1 hour`
-- `+6 hours`
-- `+12 hours`
-- `+24 hours` (1 Day)
+**Supported controls:**
+- `+1 HOUR`
+- `+6 HOURS`
+- `+12 HOURS`
+- `+24 HOURS / NEXT DAY`
 
-Advancements spanning multi-week horizons are executed via sequential discrete advancements.
+Longer periods are achieved through repeated advancement.
 
-### 2.3 Event-Time Execution
-For any time advancement over interval $[T_0, T_1]$, the engine processes all scheduled and triggered events in strictly chronological order:
+### 2.3 Event-Driven Execution
+The simulator does not execute every model every simulated hour.
 
+Instead:
 ```text
-T₀ ──► [Event 1] ──► [Event 2] ──► [Event 3] ──► [Event 4] ──► T₁
+Current Time
+    ↓
+Find next relevant event
+    ↓
+Advance SimPy to event
+    ↓
+Execute event
+    ↓
+Update state
+    ↓
+Generate consequences/events
+    ↓
+Continue
 ```
+This is necessary because the simulation may contain hundreds of ports and thousands of vessels.
 
-The simulator **does not** compute a naive delta between $T_0$ and $T_1$; it executes the discrete sequence of events, ensuring complete causal validity.
+### 2.4 Event-Time Rules
+Events have:
+- Event time
+- Entity
+- Event type
+- Source
+- Payload
+- Causal relationship
 
-### 2.4 Persistent State & Consequences
-Past events are never re-executed. Their side-effects become integral components of the active world state:
+Events occurring inside $[T_{\text{current}}, T_{\text{target}}]$ are processed chronologically. Events beyond $T_{\text{target}}$ remain scheduled.
 
-- **Past:** Inmutable history of executed events and persisted outcomes.
-- **Current:** Instantaneous operational reality $S(t)$.
-- **Future:** Queued event schedule and predicted milestones.
+### 2.5 Same-Time Events
+When multiple events have the same simulation timestamp, execution uses a deterministic priority order.
 
-> **Example:** A severe storm occurs between Day 11 06:00 and Day 12 18:00 causing an 8-hour vessel delay. After Day 12 18:00, the storm disruption ends, but the vessel's 8-hour schedule delay persists in $S(t)$ and cascades into subsequent port handling and cargo arrival.
+**General priority:**
+1. External/disruption activation
+2. Vessel movement/arrival
+3. Port/resource state changes
+4. Cargo/container operational events
+5. Demand generation
+6. Booking generation
+7. Information/forecast updates
+8. CargoPilot decision events
+9. Cost/accounting events
+10. Persistence/event publication
 
-### 2.5 SimPy Orchestration Role
-- **SimPy Engine:** Manages the simulation timeline, discrete process workers, timeout schedules, priority queues, and event triggers (*"When should it happen?"*).
-- **Domain Model:** Governs shipping rules, network balances, container logistics, and optimization policies (*"What should happen?"*).
+The exact event registry may define more specific priorities. This ensures reproducibility.
 
 ---
 
 ## 3. Randomness & Probability Framework
 
-### 3.1 Purpose & Reproducibility
-Stochastic variation models operational uncertainty (demand fluctuations, transit delays, equipment breakdowns, weather shocks). All randomness must support deterministic reproduction.
+### 3.1 Purpose
+Randomness represents uncertainty in operational behavior.
 
-### 3.2 Simulation Seed
-Every simulation run is governed by a global integer seed:
+**Examples:**
+- Demand variation
+- Booking arrival
+- Cancellation
+- Vessel delay
+- Weather impact
+- Mechanical failure
+- Container damage
+- Customer return time
+- Disruption occurrence
+- Recovery duration
 
-$$\text{Seed} \in \mathbb{Z}^+$$
+Randomness must not replace causal relationships.
 
-Guarantee:
+### 3.2 Reproducibility
+For identical:
+- Initial World
+- Scenario
+- Configuration
+- Random Seed
 
-$$\text{InitialState} + \text{Scenario} + \text{Configuration} + \text{Seed} \implies \text{Identical Trajectory}$$
+the simulator must produce the same stochastic outcomes.
 
-### 3.3 Causal vs. Arbitrary Randomness
-Randomness represents real-world uncertainty, not arbitrary noise:
+Formally:
 
-- ❌ **Anti-pattern:** Randomly adjusting port container stock every day.
-- ✅ **Causal pattern:** Demand spike $\rightarrow$ increased booking volume $\rightarrow$ higher empty pickup rate $\rightarrow$ depot container inventory depletion $\rightarrow$ equipment shortage.
+$$\text{SimulationResult} = f(S_0, \Theta, \text{Scenario}, \text{Seed})$$
+
+### 3.3 Random Number Management
+The simulation maintains a controlled random-number system.
+
+Random outcomes should be generated by model/process rather than by repeatedly checking every entity at every hour.
+
+For example, instead of:
+```python
+# Every hour:
+if random() < failure_probability:
+    ...
+```
+use a time-to-event model:
+```text
+Schedule next failure
+        ↓
+Failure occurs at scheduled stochastic time
+```
 
 ### 3.4 Supported Distributions
-- **Bernoulli / Binomial:** Vessel delay occurrence, booking cancellations, container damage probability.
-- **Poisson:** Hourly/daily booking and customer return arrival rates.
-- **Normal / Log-Normal:** Travel times, voyage durations, terminal crane handling speeds.
-- **Uniform:** Lead-time intervals, random inspection sampling.
-- **Exponential / Gamma:** Time-between-failures (MTBF) and repair duration.
+V1 may use:
+- Bernoulli
+- Binomial
+- Poisson
+- Normal
+- Log-normal
+- Exponential
+- Gamma
+- Uniform
+- Empirical distributions
 
-### 3.5 Stochastic Parameter Variables
-Each stochastic model component registers standardized parameters:
+The distribution is selected according to the operational behavior being modeled.
+
+### 3.5 Probability Rule
+For an event with probability $p$:
+
+$$X \sim \text{Bernoulli}(p)$$
+
+where:
+
+$$0 \le p \le 1$$
+
+For event rates:
+
+$$N_t \sim \text{Poisson}(\lambda_t)$$
+
+where $\lambda_t$ represents expected event count in the relevant period.
+
+### 3.6 Randomness Parameters
+**Examples:**
+- `MODEL_SEED`
 - `MODEL_EVENT_PROBABILITY`
+- `MODEL_RATE`
 - `MODEL_MEAN`
 - `MODEL_STANDARD_DEVIATION`
-- `MODEL_MIN` / `MODEL_MAX`
-- `MODEL_RATE`
-- `MODEL_SEED`
+- `MODEL_MIN`
+- `MODEL_MAX`
+- `MODEL_DISTRIBUTION`
+
+Model-specific names should be preferred over generic names when scope could become ambiguous.
 
 ---
 
 ## 4. Vessel & Voyage Model
 
-### 4.1 Vessel Entity
-Represents an individual physical container ship. Core state includes:
-- `vessel_id`: Unique identifier
-- `name`: Vessel label
-- `capacity_teu`: Maximum nominal container capacity in TEU
-- `current_location`: Coordinate / Port UN/LOCODE
-- `current_voyage_id`: Active voyage reference
-- `destination_port`: Target arrival port
-- `status`: `IN_TRANSIT` | `ARRIVED` | `BERTHED` | `WORKING` | `WAITING_FOR_BERTH` | `ANCHORED`
-- `current_speed_knots`: Real-time operational speed
-- `schedule_variance_hours`: Deviation from planned schedule ($+$ delay / $-$ ahead)
-- `current_load_teu`: Total TEU currently loaded on board
+### 4.1 Purpose
+The vessel model represents operational vessel movement between ports. The model does not perform detailed physical maritime simulation.
 
-### 4.2 Voyage Entity
-Represents a scheduled commercial transit between network ports:
-- `voyage_id`: Unique voyage code
-- `vessel_id`: Assigned vessel
-- `origin_port` & `destination_port`: Leg boundary UN/LOCODEs
-- `scheduled_departure` & `scheduled_arrival`: Published schedule
-- `actual_departure` & `estimated_arrival`: Real-time tracking values
-- `status`: `SCHEDULED` | `ACTIVE` | `COMPLETED` | `CANCELLED`
+### 4.2 Vessel State
+A vessel contains:
 
-### 4.3 Vessel Movement & Transit Time
-For a voyage leg with nautical distance $D$ and effective speed $V_{\text{eff}}$:
+```text
+Vessel
+├── ID
+├── Vessel Class
+├── Capacity
+├── Current Location
+├── Current Voyage
+├── Status
+├── Current Position
+├── Current Speed
+├── ETA
+├── Schedule Variance
+├── Current Load
+└── Condition
+```
+
+**Possible statuses:**
+- `AVAILABLE`
+- `SCHEDULED`
+- `IN_TRANSIT`
+- `ARRIVED`
+- `WAITING_FOR_BERTH`
+- `IN_PORT`
+- `DEPARTED`
+- `DELAYED`
+- `UNAVAILABLE`
+
+### 4.3 Voyage State
+A voyage contains:
+- Vessel
+- Origin
+- Destination
+- Scheduled departure
+- Scheduled arrival
+- Actual departure
+- Estimated arrival
+- Actual arrival
+- Status
+- Route distance
+
+### 4.4 Vessel Movement
+For remaining distance $D$ and effective speed $V_{\text{eff}}$:
 
 $$T_{\text{travel}} = \frac{D}{V_{\text{eff}}}$$
 
-Where effective vessel speed accounts for weather and operational factors:
+Effective speed:
 
 $$V_{\text{eff}} = V_{\text{base}} \times F_{\text{weather}} \times F_{\text{operational}}$$
 
-- $V_{\text{base}}$: Design cruising speed (knots)
-- $F_{\text{weather}} \in (0, 1]$: Speed reduction penalty due to sea state / headwinds
-- $F_{\text{operational}} \in (0, 1]$: Slow-steaming or efficiency constraints
+where:
+- $V_{\text{base}}$: Vessel base speed
+- $F_{\text{weather}}$: Weather factor
+- $F_{\text{operational}}$: Operational factor
 
-### 4.4 Continuous Position Tracking
-A vessel retains its active position along its transit leg:
+### 4.5 Current Position
+When an event changes vessel movement, calculation starts from the vessel's current position. It must not restart the voyage from the original departure port.
 
-$$\text{Position}_{\text{current}} = \text{Position}_{\text{origin}} + \vec{u} \cdot \int_{t_{\text{dep}}}^{t} V_{\text{eff}}(\tau)\, d\tau$$
+If:
 
-Calculations never re-baseline to the origin port after an intermediate simulation step.
+$$D_{\text{remaining}} = D_{\text{route}} - D_{\text{travelled}}$$
 
-### 4.5 Weather Impact
-Weather systems degrade vessel speed and trigger potential schedule slips:
+then:
+
+$$T_{\text{remaining}} = \frac{D_{\text{remaining}}}{V_{\text{eff}}}$$
+
+### 4.6 Weather Impact
+Weather may modify:
+- Speed
+- Delay probability
+- Route conditions
+- Port operations
+
+**Example:**
 
 $$V_{\text{weather}} = V_{\text{base}} \times F_{\text{weather}}$$
 
-Associated parameters:
-- `VESSEL_BASE_SPEED_KNOTS`
-- `VESSEL_SPEED_VARIATION`
-- `WEATHER_SPEED_FACTOR`
-- `WEATHER_DELAY_PROBABILITY`
-- `WEATHER_DELAY_MIN_HOURS`
-- `WEATHER_DELAY_MAX_HOURS`
-
-### 4.6 Arrival & Port Entry Sequence
-Upon reaching the target port destination radius:
-
+A storm can therefore cause:
 ```text
-[IN_TRANSIT] ──► [ARRIVED] ──► [Port Resource Check]
-                                      │
-              ┌───────────────────────┴───────────────────────┐
-              ▼                                               ▼
-     Berth Available                                  Berth Congested
-              │                                               │
-              ▼                                               ▼
-          [BERTHED]                                  [WAITING_FOR_BERTH]
-              │                                               │
-              ▼                                               ▼
-      Discharge/Loading                              Queue Time Accumulation
+Storm
+ ↓
+Speed reduction
+ ↓
+Longer remaining travel time
+ ↓
+ETA change
 ```
 
-### 4.7 Waiting & Congestion Delay
-If all berths are occupied, the vessel transitions to `WAITING_FOR_BERTH`. The accumulated queue time directly increases the vessel's `schedule_variance_hours`.
+### 4.7 Arrival
+When a vessel reaches its destination:
+```text
+IN_TRANSIT
+    ↓
+ARRIVED
+    ↓
+PORT RESOURCE CHECK
+```
+The vessel does not independently determine whether the port has capacity. It asks the port model.
 
-### 4.8 Voyage Generation & Planning Horizon
-- The simulator generates and maintains recurring service loops covering up to a **90-day forward operational window**.
-- CargoPilot's planning engine only ingests events within its authorized decision horizon (preventing future information leakage).
+### 4.8 Berth Waiting
+If no berth is available:
+```text
+ARRIVED
+    ↓
+WAITING_FOR_BERTH
+```
+The port estimates the next available opportunity. Waiting time contributes to:
 
-### 4.9 Vessel Model Parameters
+$$\text{ScheduleVariance} = \text{ActualTime} - \text{ScheduledTime}$$
+
+### 4.9 Port Interaction
+The vessel-port interaction is:
+```text
+Vessel reaches port
+        ↓
+Port evaluates berth
+        ↓
+Berth available?
+     /       \
+   Yes        No
+   ↓           ↓
+Berthing     Queue
+   ↓           ↓
+Operations   Wait
+```
+This avoids checking every vessel against every port continuously.
+
+### 4.10 Voyage Generation
+Recurring service/rotation:
+```text
+Service / Rotation
+        ↓
+Schedule
+        ↓
+Individual Voyages
+        ↓
+Vessel Assignment
+```
+The simulator may maintain approximately 90 days of future operational entities. However, CargoPilot must only receive information available according to the information/visibility model.
+
+### 4.11 Vessel Parameters
+**Examples:**
 - `VESSEL_BASE_SPEED_KNOTS`
 - `VESSEL_SPEED_VARIATION`
 - `VESSEL_CAPACITY_TEU`
-- `VESSEL_TURNAROUND_TIME`
+- `VESSEL_TURNAROUND_TIME_HOURS`
 - `VESSEL_DELAY_PROBABILITY`
-- `VESSEL_MECHANICAL_FAILURE_PROBABILITY`
 - `VESSEL_MEAN_TIME_BETWEEN_FAILURES`
-- `VESSEL_RECOVERY_TIME`
+- `VESSEL_RECOVERY_TIME_HOURS`
+- `WEATHER_SPEED_FACTOR`
+- `WEATHER_DELAY_PROBABILITY`
 
 ---
 
 ## 5. Port & Terminal Model
 
-### 5.1 Port State Structure
-A port terminal node consists of:
-
+### 5.1 Port Structure
 ```text
-Port / Terminal
-├── Berths (Dedicated & multi-user container vessel berths)
-├── Cranes (Ship-to-shore gantry cranes)
-├── Container Yard (CY storage capacity & stacking zones)
-├── Vessel Waiting Queue (Anchorage FIFO / priority queue)
-├── Container Inventory (Full import, full export, empty stocks by type)
-├── Handling Capacity (Gross crane moves per hour)
-└── Congestion State (Dynamic utilization index)
+Port
+├── Berths
+├── Cranes
+├── Yard
+├── Vessel Queue
+├── Container Inventory
+├── Handling Capacity
+└── Congestion State
 ```
 
-### 5.2 Berth Capacity Constraint
-Let $B_{\text{available}}(t)$ represent the number of free berths at time $t$:
+### 5.2 Berth Capacity
+Let $B_{\text{available}}(t)$ be available berth capacity. A vessel can begin berth-dependent operations only when sufficient berth capacity exists.
 
-$$B_{\text{available}}(t) = B_{\text{total}} - \sum_{v \in \text{Vessels}} \mathbf{1}_{\{ \text{status}(v, t) = \text{BERTHED} \}}$$
-
-Vessel berthing operations are constrained by:
-
-$$B_{\text{available}}(t) > 0$$
-
-### 5.3 Yard Storage Capacity Constraint
-At all simulation times $t$:
+### 5.3 Yard Capacity
+Mandatory consistency constraint:
 
 $$\text{YardOccupancy}(t) \le \text{YardCapacity}$$
 
-Where $\text{YardOccupancy}(t)$ is the aggregate sum of all physical containers residing in the port terminal.
+If capacity cannot accommodate additional containers, the operation must be delayed or queued rather than creating an impossible state.
 
-### 5.4 Port Utilization Index
-The port utilization metric $U(t)$ is defined as:
+### 5.4 Resource Utilization
+For a resource:
 
 $$U(t) = \frac{\text{ResourceUsage}(t)}{\text{ResourceCapacity}(t)}$$
 
-Evaluated across both berth availability and yard storage buffers.
+where $U$ may represent:
+- Berth utilization
+- Crane utilization
+- Yard utilization
 
-### 5.5 Congestion Function
-When utilization exceeds critical threshold $U_{\text{threshold}}$:
+### 5.5 Congestion
+V1 uses a moderate nonlinear congestion model.
 
-$$\text{Congestion}(t) = f\bigl(U(t)\bigr) = \max\left(0,\, \frac{U(t) - U_{\text{threshold}}}{1 - U_{\text{threshold}}}\right)$$
+Let:
 
-Higher congestion exponentially increases vessel waiting times and slows terminal crane moves per hour.
+$$U = \frac{\text{Usage}}{\text{Capacity}}$$
 
-**Port Parameters:**
-- `PORT_BERTH_COUNT`
-- `PORT_CRANE_COUNT`
-- `PORT_YARD_CAPACITY`
-- `PORT_LOADING_RATE` (moves/hour)
-- `PORT_DISCHARGE_RATE` (moves/hour)
-- `PORT_BASE_HANDLING_TIME`
-- `PORT_CONGESTION_THRESHOLD`
-- `PORT_CONGESTION_FACTOR`
+Define threshold $U_c$.
+
+For $U \le U_c$:
+
+$$F_{\text{congestion}} = 1$$
+
+For $U > U_c$:
+
+$$F_{\text{congestion}} = 1 + \alpha \times \left( \frac{U - U_c}{1 - U_c} \right)^\beta$$
+
+where:
+- $\alpha$: Congestion severity
+- $\beta$: Nonlinearity
+
+Handling time becomes:
+
+$$T_{\text{handling}} = T_{\text{base}} \times F_{\text{congestion}}$$
+
+This allows congestion to increase rapidly as the resource approaches full utilization without requiring detailed terminal physics.
+
+### 5.6 Port Operation
+General flow:
+```text
+Vessel Arrival
+      ↓
+Berth Check
+      ↓
+Berthing
+      ↓
+Cargo Discharge / Loading
+      ↓
+Yard Update
+      ↓
+Vessel Departure
+```
+
+### 5.7 Port Parameters
+**Examples:**
+- `PORT_BERTH_COUNT[port]`
+- `PORT_CRANE_COUNT[port]`
+- `PORT_YARD_CAPACITY[port]`
+- `PORT_LOADING_RATE[port]`
+- `PORT_DISCHARGE_RATE[port]`
+- `PORT_BASE_HANDLING_TIME[port]`
+- `PORT_CONGESTION_THRESHOLD[port]`
+- `PORT_CONGESTION_FACTOR[port]`
+- `PORT_CONGESTION_EXPONENT[port]`
 
 ---
 
 ## 6. Container & Equipment Model
 
-### 6.1 Container Entity
-The fundamental physical asset tracked across the supply chain:
-- `container_id`: ISO 6346 identification number (e.g., `MSCU1234567`)
-- `equipment_type`: Standard size/type designation
-- `current_location`: Port, depot, customer premise, or vessel ID
-- `status`: Physical lifecycle state
-- `condition`: `GOOD` | `DAMAGED` | `MAINTENANCE` | `UNAVAILABLE`
-- `booking_id`: Associated booking assignment (if allocated)
-- `ownership`: `OWNED` | `LONG_TERM_LEASE` | `SPOT_LEASE`
+### 6.1 Container Attributes
+Each container contains:
+- Container ID
+- Equipment type
+- Current location
+- Status
+- Condition
+- Booking
+- Allocation
+- Movement state
+- Availability timestamp
 
-### 6.2 Container Lifecycle State Machine
-
+### 6.2 Container Lifecycle
+Primary lifecycle:
 ```text
-[EMPTY_AVAILABLE] ──► [ALLOCATED] ──► [GATE_OUT / PICKUP] ──► [STUFFING]
-                                                                  │
-[AVAILABLE] ◄── [DISCHARGE] ◄── [IN_TRANSIT] ◄── [LOADED] ◄───────┘
+EMPTY_AVAILABLE
+      ↓
+ALLOCATED
+      ↓
+GATE_OUT
+      ↓
+STUFFING
+      ↓
+LOADED
+      ↓
+IN_TRANSIT
+      ↓
+DISCHARGED
+      ↓
+CUSTOMER
+      ↓
+EMPTY
+      ↓
+EMPTY_AVAILABLE
 ```
 
-### 6.3 Supported Equipment Types
-- `20DC`: 20ft Standard Dry Container (1.0 TEU)
-- `40DC`: 40ft Standard Dry Container (2.0 TEU)
-- `40HC`: 40ft High Cube Dry Container (2.0 TEU)
+### 6.3 Equipment Types
+V1:
+- `20DC`
+- `40DC`
+- `40HC`
 
-### 6.4 Maintenance & Condition Transition
-Containers transition to `DAMAGED` or `MAINTENANCE` states based on operational handling events (rough transit, terminal drop, customer abuse):
+Additional equipment types may be introduced through configuration.
 
-$$\mathbb{P}(\text{Damaged} \mid \text{Handling Event}) = \theta_{\text{damage}}$$
+### 6.4 Container Condition
+Possible states:
+- `GOOD`
+- `DAMAGED`
+- `MAINTENANCE`
+- `UNAVAILABLE`
+
+A condition transition must have a modeled cause.
+
+### 6.5 Damage and Maintenance
+For an operational event:
+
+$$\text{Damage} \sim \text{Bernoulli}(p_{\text{damage}})$$
+
+If damage occurs:
+```text
+GOOD
+ ↓
+DAMAGED
+ ↓
+REPAIR / MAINTENANCE
+ ↓
+GOOD
+```
+or:
+```text
+DAMAGED
+ ↓
+UNAVAILABLE
+```
+depending on severity.
 
 **Parameters:**
 - `CONTAINER_DAMAGE_PROBABILITY`
 - `CONTAINER_DAMAGE_SEVERITY`
-- `CONTAINER_REPAIR_TIME` (days)
+- `CONTAINER_REPAIR_TIME`
 - `CONTAINER_MAINTENANCE_PROBABILITY`
+- `CONTAINER_MAINTENANCE_TIME`
 
 ---
 
 ## 7. Demand Model
 
-### 7.1 Demand Generation Purpose
-Simulates customer shipping demand across origin-destination port pairs, establishing the commercial cargo flow driving the logistics network.
+### 7.1 Purpose
+Demand represents cargo requirements generated over simulation time.
 
-### 7.2 Demand Dimensionality
-Demand is partitioned along:
+Flow:
+```text
+Historical Demand
+      ↓
+Demand Model
+      ↓
+Future Demand
+      ↓
+Booking Generation
+```
 
-$$D_{i, j, e, t}$$
+### 7.2 Demand Dimensions
+Demand may vary by:
+- Origin
+- Destination
+- Equipment type
+- Time
+- Quantity
+- Direction
+- Customer/segment where modeled
 
-- Origin port $i$
-- Destination port $j$
-- Equipment type $e \in \{ \text{20DC}, \text{40DC}, \text{40HC} \}$
-- Target departure window / week $t$
+### 7.3 Base Demand
+Define $D_{i,j,e,t}$ as demand for:
+- Origin $i$
+- Destination $j$
+- Equipment type $e$
+- Period $t$
 
-### 7.3 Demand Decomposition
-Total realized customer demand decomposes into:
+### 7.4 Demand Generation
+V1 uses:
 
-$$D_t = D_{\text{base}, t} + D_{\text{seasonal}, t} + D_{\text{trend}, t} + D_{\text{variation}, t} + D_{\text{shock}, t}$$
+$$\lambda_{i,j,e,t} = D_{\text{base}} \times F_{\text{trend}} \times F_{\text{seasonal}} \times F_{\text{scenario}}$$
 
-- $D_{\text{base}}$: Baseline weekly container volume
-- $D_{\text{seasonal}}$: Cyclical seasonal curve (e.g., pre-holiday surge)
-- $D_{\text{trend}}$: Macro trade growth or contraction
-- $D_{\text{variation}} \sim \mathcal{N}(0, \sigma^2)$: Stochastic variance
-- $D_{\text{shock}}$: Scenario disruption surges or sudden route cancellations
+Then generated demand can be sampled as:
 
-**Parameters:**
-- `DEMAND_BASE_RATE`
+$$D_{i,j,e,t} \sim \text{Poisson}(\lambda_{i,j,e,t})$$
+
+For smaller or highly controlled test worlds, a configured deterministic demand value may also be used.
+
+### 7.5 Historical Demand
+The initial world may contain historical demand.
+
+As simulation progresses:
+```text
+Historical Data
+      ↓
+Observed New Demand
+      ↓
+Historical Dataset Updated
+      ↓
+Forecast Model
+```
+This allows future forecasts to use an evolving simulated history.
+
+### 7.6 Parameters
+- `DEMAND_BASE_RATE[OD][equipment]`
 - `DEMAND_GROWTH_RATE`
 - `DEMAND_SEASONAL_FACTOR`
 - `DEMAND_VARIANCE`
 - `DEMAND_SPIKE_PROBABILITY`
 - `DEMAND_SPIKE_FACTOR`
+- `DEMAND_GENERATION_INTERVAL`
 
 ---
 
 ## 8. Booking Generation Model
 
-### 8.1 Booking Creation Flow
-Realized demand is converted into discrete customer booking requests:
+### 8.1 Purpose
+The Simulation Engine creates bookings representing simulated customer demand.
 
+### 8.2 Booking Generation
+Conceptually:
 ```text
-[Demand Process] ──► [Booking Generation] ──► [BOOKING_CREATED Event]
-                                                      │
-                                                      ▼
-                                              [Kafka Message Bus]
-                                                      │
-                                                      ▼
-                                            [CargoPilot Ingestion]
+Demand
+  ↓
+Booking Generation
+  ↓
+BOOKING_CREATED
+  ↓
+Kafka
+  ↓
+CargoPilot
 ```
 
-### 8.2 Booking Attributes
-- `booking_id`: Unique booking reference number
-- `origin_port` & `destination_port`: Trade route ports
-- `commodity`: Cargo type description
-- `equipment_type`: Requested container type
-- `quantity`: Number of containers required
-- `requested_departure_date`: Earliest viable departure
-- `status`: `SUBMITTED` | `CONFIRMED` | `ALLOCATED` | `CANCELLED` | `FULFILLED`
-- `lock_status`: `UNLOCKED` | `LOCKED`
+### 8.3 Booking Rate
+Booking behavior is configurable by:
 
-### 8.3 Booking Arrival Probability
-Individual booking orders arrive according to a Poisson arrival process parameterized by demand volume:
+$$\text{BOOKING\_RATE}[origin][destination][equipment][time]$$
 
-$$\mathbb{P}(k \text{ bookings in interval } \Delta t) = \frac{(\lambda \Delta t)^k e^{-\lambda \Delta t}}{k!}$$
+A demand quantity may be converted into bookings according to configured booking-size behavior.
 
-### 8.4 Booking Lifecycle & Modifications
-Bookings can be confirmed, modified, or cancelled prior to departure cutoffs:
-- `BOOKING_GENERATION_RATE`
+### 8.4 Booking Attributes
+- Booking ID
+- Origin
+- Destination
+- Equipment Type
+- Quantity
+- Cargo Ready Time
+- Departure/Voyage
+- Booking Time
+- Status
+- Allocation
+- Lock Status
+
+### 8.5 Cancellation
+For a booking:
+
+$$\text{Cancel} \sim \text{Bernoulli}(p_{\text{cancel}})$$
+
+Cancellation must respect the booking's current operational state.
+
+**Parameters:**
 - `BOOKING_CANCELLATION_PROBABILITY`
 - `BOOKING_MODIFICATION_PROBABILITY`
-- `BOOKING_LEAD_TIME` (days before departure)
+- `BOOKING_LEAD_TIME`
+- `BOOKING_SIZE_DISTRIBUTION`
 
 ---
 
 ## 9. Allocation & 7-Day Lock Model
 
-### 9.1 Boundary of Responsibility
-- **CargoPilot Decision Engine:** Owns optimization, container allocation recommendations, and empty equipment repositioning assignments.
-- **Simulation Engine:** Owns operational execution, enforces physical feasibility, advances time, and records the resulting state changes.
+### 9.1 Responsibility
+CargoPilot owns container allocation.
 
-### 9.2 Allocation Lifecycle States
+The simulator:
+- Observes allocation
+- Persists its consequences
+- Executes resulting operational behavior
+- Does not optimize allocation
 
+### 9.2 Allocation Flow
 ```text
-[CREATED] ──► [ALLOCATED] ──► [MODIFIABLE] ──► [LOCKED (at Cutoff)] ──► [COMPLETED]
+Booking Created
+      ↓
+CargoPilot
+      ↓
+Container Allocation
+      ↓
+PostgreSQL
+      ↓
+Allocation Event
+      ↓
+Simulation Engine observes
 ```
 
-### 9.3 Seven-Day Freeze Boundary
-For a booking with scheduled vessel departure $T_{\text{departure}}$:
+### 9.3 Allocation States
+- `CREATED`
+- `ALLOCATED`
+- `MODIFIABLE`
+- `LOCKED`
+- `COMPLETED`
+
+### 9.4 Seven-Day Lock
+For vessel departure:
 
 $$T_{\text{cutoff}} = T_{\text{departure}} - 7\text{ days}$$
 
-- **Before $T_{\text{cutoff}}$:** Allocations remain dynamic and may be freely re-optimized by CargoPilot.
-- **At & After $T_{\text{cutoff}}$:** The allocation freezes into a hard operational lock:
+Before cutoff:
+
+$$T < T_{\text{cutoff}}$$
+
+allocation may be modified.
+
+At or after cutoff:
+
+$$T \ge T_{\text{cutoff}}$$
+
+the allocation is locked. Therefore equality belongs to the locked state.
+
+### 9.5 Locked Allocation
+Once locked:
 
 $$\text{Allocation}_{t+1} = \text{Allocation}_t$$
 
-### 9.4 Lock Enforcement
-Standard planning workflows cannot modify a locked allocation. Only authorized administrator emergency overrides may break a locked assignment.
-
-### 9.5 Admin Override Protocol
-When an administrator forces an operational reassignment:
-
-```text
-[Admin Override Request] ──► [CargoPilot API Validation] ──► [World State Mutation]
-                                                                     │
-                                                                     ▼
-                                                        [Simulation Observes Change]
-```
+under normal CargoPilot allocation operations. The simulator does not generate artificial allocation issues after locking.
 
 ---
 
-## 10. Empty Container Flow Model
+## 10. Import Return & Equipment Availability Model
 
-### 10.1 Operational Flow
-Empty containers must be available at depot locations to service outward booking demand:
+### 10.1 Purpose
+This model handles the return of equipment after import cargo is delivered.
 
+Flow:
 ```text
-[EMPTY_DEPOT] ──► [AVAILABLE] ──► [ALLOCATED] ──► [GATE_OUT / PICKUP]
-                                                         │
-[AVAILABLE] ◄── [DEPOT_RETURN] ◄── [STRIPPED] ◄── [CUSTOMER_UNLOAD]
+Loaded Import
+      ↓
+Vessel Arrival
+      ↓
+Discharge
+      ↓
+Customer
+      ↓
+Customer Use
+      ↓
+Empty Return
+      ↓
+Available Equipment
 ```
 
-### 10.2 Empty Stock Tracking
-For port/depot location $l$ and equipment type $e$:
-
-$$\text{EmptyInventory}_{l, e}(t)$$
-
-Is modified by:
-- Inbound empty repositioning discharges ($+$)
-- Import container empty returns ($+$)
-- Off-hire redeliveries to leasing companies ($-$)
-- Outbound empty repositioning loadings ($-$)
-- Outbound export booking pickups ($-$)
-- Damage / maintenance removals ($-$)
-
-### 10.3 Equipment Balance Conservation
-For every discrete step:
-
-$$\text{Inventory}_{t+1} = \text{Inventory}_t + \text{Inflow}_t - \text{Outflow}_t$$
-
-Equipment can neither disappear nor spontaneously generate without an explicit transaction event.
-
----
-
-## 11. Import Return Model
-
-### 11.1 Import Stripping & Return Cycle
-Inbound full containers discharged from vessels are trucked to consignees, stripped of cargo, and returned to empty depots:
-
-```text
-[Full Inbound Cargo] ──► [Vessel Discharge] ──► [Consignee Delivery]
-                                                        │
-                                                        ▼
-[Available Empty Depot Stock] ◄── [Empty Return Gate-In] ◄── [Customer Unstuffing]
-```
-
-### 11.2 Customer Turnaround Time
-Customer detention duration follows a stochastic distribution:
+### 10.2 Return Time
 
 $$T_{\text{return}} = T_{\text{delivery}} + T_{\text{customer\_use}}$$
 
-Where $T_{\text{customer\_use}}$ is drawn from a log-normal or gamma distribution:
-- `IMPORT_RETURN_MEAN_DAYS` (default: 5.0 days)
+Customer-use duration is stochastic/configurable. A suitable V1 distribution is a bounded distribution or empirical distribution.
+
+### 10.3 Equipment Availability
+When the customer returns the empty container:
+```text
+CUSTOMER
+   ↓
+EMPTY
+   ↓
+EMPTY_AVAILABLE
+```
+The equipment inventory at the return location increases.
+
+### 10.4 Parameters
+- `IMPORT_RETURN_MEAN_DAYS[equipment]`
 - `IMPORT_RETURN_VARIANCE`
-- `IMPORT_RETURN_MIN_DAYS` (default: 1.0 day)
-- `IMPORT_RETURN_MAX_DAYS` (default: 21.0 days)
+- `IMPORT_RETURN_MIN_DAYS`
+- `IMPORT_RETURN_MAX_DAYS`
 - `IMPORT_RETURN_DELAY_PROBABILITY`
+- `IMPORT_RETURN_DELAY_DAYS`
 
 ---
 
-## 12. Equipment Supply & Scarcity Model
+## 11. Equipment Supply & Scarcity Model
 
-### 12.1 Supply-Demand Balance
-At any port $l$, equipment availability vs. outward demand determines market balance:
+### 11.1 Purpose
+This model determines whether sufficient equipment exists at a location for operational demand.
 
-$$\text{NetSupply}_{l, e}(t) = \text{AvailableEquipment}_{l, e}(t) - \text{CommittedDemand}_{l, e}(t)$$
+### 11.2 Available Equipment
+For location $l$ and equipment $e$:
 
-### 12.2 Shortage Condition
-An equipment shortage event is triggered whenever:
+$$\text{Available}_{l,e}(t)$$
 
-$$\text{AvailableEquipment}_{l, e}(t) < \text{RequiredEquipment}_{l, e}(t)$$
+represents usable equipment available at that location and time.
 
-$$\text{ShortageQuantity}_{l, e}(t) = \max\bigl(0,\, \text{RequiredEquipment}_{l, e}(t) - \text{AvailableEquipment}_{l, e}(t)\bigr)$$
+### 11.3 Requirement
+For expected requirement:
 
-### 12.3 Scarcity Severity Index
-The equipment scarcity ratio gauges regional operational risk:
+$$\text{Required}_{l,e}(t)$$
 
-$$\text{ScarcityRatio}_{l, e}(t) = \frac{\text{RequiredEquipment}_{l, e}(t)}{\max\bigl(1,\, \text{AvailableEquipment}_{l, e}(t)\bigr)}$$
+### 11.4 Shortage
 
-- $\text{ScarcityRatio} \le 1.0$: Safe buffer / surplus
-- $1.0 < \text{ScarcityRatio} \le 1.25$: Tight inventory warning
-- $\text{ScarcityRatio} > 1.25$: Critical deficit risk; requires immediate repositioning or leasing
+$$\text{Shortage}_{l,e}(t) = \max\bigl(0,\, \text{Required}_{l,e}(t) - \text{Available}_{l,e}(t)\bigr)$$
 
-**Parameters:**
-- `EQUIPMENT_INITIAL_INVENTORY`
-- `EQUIPMENT_MINIMUM_BUFFER`
+### 11.5 Surplus
+
+$$\text{Surplus}_{l,e}(t) = \max\bigl(0,\, \text{Available}_{l,e}(t) - \text{Target}_{l,e}(t)\bigr)$$
+
+### 11.6 Deficit
+
+$$\text{Deficit}_{l,e}(t) = \max\bigl(0,\, \text{Target}_{l,e}(t) - \text{Available}_{l,e}(t)\bigr)$$
+
+### 11.7 Scarcity Effects
+Equipment shortage can cause:
+```text
+Shortage
+   ↓
+Booking fulfillment pressure
+   ↓
+CargoPilot decision
+   ├── Reposition
+   └── Lease
+```
+The simulator does not automatically optimize these decisions.
+
+### 11.8 Parameters
+- `EQUIPMENT_TARGET[location][equipment]`
+- `EQUIPMENT_MINIMUM_STOCK[location][equipment]`
 - `EQUIPMENT_SHORTAGE_THRESHOLD`
-- `EQUIPMENT_DAMAGE_RATE`
-- `EQUIPMENT_REPAIR_RATE`
+- `EQUIPMENT_AVAILABILITY_FACTOR`
 
 ---
 
-## 13. Leasing Model
+## 12. Leasing Model
 
-### 13.1 Purpose & Role
-Models supplemental container procurement via third-party container leasing companies to mitigate structural equipment deficits:
-- Master leasing (long-term flexible pool)
-- One-way spot leasing (direct repositioning assistance)
+### 12.1 Responsibility
+CargoPilot decides whether leasing is economically appropriate. The simulator represents the operational consequence of the lease decision. It does not automatically lease equipment merely because shortage exists.
 
-### 13.2 Lease Procurement Calculation
-When local owned stocks cannot fulfill confirmed bookings:
+### 12.2 Lease Requirement
+Conceptually:
 
-$$\text{LeaseRequirement} = \max\bigl(0,\, \text{RequiredEquipment} - \text{AvailableOwnedEquipment}\bigr)$$
+$$\text{LeaseRequirement} = \max(0,\, \text{RequiredEquipment} - \text{AvailableEquipment})$$
 
-### 13.3 Financial Cost Formulation
-For leased volume $Q$ of equipment type $e$:
+This is an input/indicator for CargoPilot rather than an automatic simulator decision.
 
-$$\text{LeaseCost} = Q \times \text{DailyLeaseRate}_e \times \text{DurationDays} + Q \times \text{PickupCharge}_e + Q \times \text{DropoffCharge}_e$$
+### 12.3 Lease Execution
+When CargoPilot decides to lease:
+```text
+CargoPilot Lease Decision
+       ↓
+Lease Order
+       ↓
+Lease Start Delay
+       ↓
+Equipment Added
+       ↓
+Available Equipment
+```
 
-**Parameters:**
-- `LEASE_COST_PER_DAY` (USD/TEU/day)
-- `LEASE_MIN_DURATION` (days)
-- `LEASE_MAX_DURATION` (days)
-- `LEASE_AVAILABLE_CAPACITY` (max leasable units per location)
-- `LEASE_START_DELAY` (lead time to pickup)
+### 12.4 Lease Cost
+For quantity $Q$:
+
+$$\text{LeaseCost} = Q \times \text{Rate} \times \text{Duration}$$
+
+### 12.5 Parameters
+- `LEASE_COST_PER_DAY`
+- `LEASE_MIN_DURATION`
+- `LEASE_MAX_DURATION`
+- `LEASE_AVAILABLE_CAPACITY`
+- `LEASE_START_DELAY`
 - `LEASE_COST_VARIATION`
 
 ---
 
-## 14. Repositioning Model
+## 13. Repositioning Model
 
-### 14.1 Operational Repositioning Mechanism
-Moves empty equipment from surplus ports (where imports exceed exports) to deficit ports (where exports exceed imports):
-
+### 13.1 Purpose
+Represents movement of empty containers between locations.
 ```text
-[Surplus Location A] ──► [Load Empties on Vessel] ──► [Voyage Leg Transit]
-                                                              │
-[Deficit Location B] ◄── [Discharge Empties to CY] ◄──────────┘
+Surplus Location
+      ↓
+Empty Repositioning
+      ↓
+Deficit Location
 ```
 
-### 14.2 Regional Imbalance Classification
-For any port location $l$:
+### 13.2 Decision Ownership
+CargoPilot decides:
+- Whether to reposition
+- Source
+- Destination
+- Equipment type
+- Quantity
+- Timing
 
-$$\text{Surplus}_l = \max\bigl(0,\, \text{Available}_l - \text{TargetSafetyStock}_l\bigr)$$
+The simulator executes the movement.
 
-$$\text{Deficit}_l = \max\bigl(0,\, \text{TargetSafetyStock}_l - \text{Available}_l\bigr)$$
+### 13.3 Repositioning Execution
+```text
+CargoPilot Decision
+      ↓
+Source Inventory Decrease
+      ↓
+Repositioning In Transit
+      ↓
+Transit Time
+      ↓
+Destination Inventory Increase
+```
 
-### 14.3 Division of Responsibilities
-- **CargoPilot MILP Solver:** Calculates optimal repositioning decisions (quantity, container type, vessel voyage leg).
-- **Simulation Engine:** Validates vessel TEU weight/slot limits, deducts empties from origin port CY, moves them through maritime transit, and credits destination inventory upon vessel discharge.
-
-**Parameters:**
+### 13.4 Parameters
 - `REPOSITIONING_TRANSIT_TIME`
 - `REPOSITIONING_HANDLING_TIME`
-- `REPOSITIONING_COST_PER_TEU`
-- `REPOSITIONING_CAPACITY_LIMIT`
+- `REPOSITIONING_COST`
+- `REPOSITIONING_CAPACITY`
 
 ---
 
-## 15. Disruption Models
+## 14. Disruption Models
 
-### 15.1 Disruption Taxonomy
-Operational shocks modeled by the engine:
-1. **Severe Weather / Storms:** Gale winds, typhoons, sea swells causing speed reductions and port closures.
-2. **Port Congestion:** Terminal yard saturation, crane breakdowns, and vessel queue spikes.
-3. **Labor Strikes / Work Stoppages:** Temporary cessation of terminal handling operations.
-4. **Vessel Mechanical Failure:** Engine breakdown forcing slow steaming or emergency anchorage repairs.
-5. **Equipment Shortage Shocks:** Sudden localized equipment shortfalls.
-6. **Demand Volatility Spikes:** Unexpected surges in regional export bookings.
+### 14.1 Purpose
+Disruptions disturb normal operations.
 
-### 15.2 Disruption Data Schema
+V1 includes:
+- Weather/storm
+- Port congestion
+- Port strike
+- Vessel mechanical failure
+- Equipment shortage
+- Demand shock
+
+### 14.2 Disruption Structure
 ```text
 Disruption
-├── disruption_id: Unique GUID
-├── type: STORM | CONGESTION | STRIKE | MECHANICAL_FAILURE | DEMAND_SPIKE
-├── start_time: ISO-8601 simulation timestamp
-├── duration_hours: Active window length
-├── severity: Numeric scalar [0.0 - 1.0]
-├── affected_entities: List of Port / Vessel / Route IDs
-├── behavior_overrides: Specific parameter modifications
-└── random_seed: Seed governing stochastic outcomes
+├── ID
+├── Type
+├── Start Time
+├── End Time
+├── Duration
+├── Severity
+├── Affected Entities
+├── Behavior
+└── Random Outcome
 ```
 
-### 15.3 Disruption Active Window vs. Persistent Consequences
+### 14.3 Active Period vs Consequences
+A disruption can end while its consequences remain.
 
-> [!WARNING]
-> While a disruption has a finite active duration, its operational consequences persist until absorbed by network buffer capacity.
-
+**Example:**
 ```text
-Storm Disruption (Active Day 11 06:00 to Day 12 18:00)
-       ↓
-Vessel 12h Arrival Delay
-       ↓
-Port Berth Conflict & Queue
-       ↓
-Empty Discharge Delayed 24h
-       ↓
-Booking Equipment Shortage at Day 14 (Storm long inactive!)
+Storm
+ ↓
+Speed reduction
+ ↓
+Vessel delay
+ ↓
+Late arrival
+ ↓
+Port workload shift
+ ↓
+Container delay
 ```
+When the storm ends, the storm is inactive, but the vessel may remain delayed.
 
-**Parameters:**
+### 14.4 Storm Model
+For severity $s$, define:
+
+$$F_{\text{weather}} = 1 - \alpha_s \times s$$
+
+bounded to the configured minimum.
+
+The effective speed becomes:
+
+$$V_{\text{eff}} = V_{\text{base}} \times F_{\text{weather}} \times F_{\text{operational}}$$
+
+Storm may additionally generate a delay event.
+
+### 14.5 Parameters
 - `STORM_OCCURRENCE_PROBABILITY`
 - `STORM_DURATION_HOURS`
 - `STORM_SEVERITY`
 - `STORM_SPEED_FACTOR`
 - `STORM_DELAY_FACTOR`
+- `PORT_STRIKE_PROBABILITY`
+- `PORT_STRIKE_DURATION`
+- `PORT_STRIKE_CAPACITY_FACTOR`
 
 ---
 
-## 16. Causal & Cascading Effects
+## 15. Causal & Cascading Effects
 
-### 16.1 Fundamental Causal Principle
-State updates must follow physical causality. Independent, uncorrelated random mutations across downstream variables are strictly prohibited.
+### 15.1 Core Principle
+The simulator prioritizes causal relationships over independent random changes.
 
-### 16.2 Maritime Operational Chain
-
-```mermaid
-graph TD
-    A[Meteorological Storm] --> B[Vessel Speed Reduction]
-    B --> C[Delayed Port Arrival / Slip]
-    C --> D[Berth Queue Congestion]
-    D --> E[Inbound Container Discharge Delay]
-    E --> F[Depot Empty Inventory Shortfall]
-    F --> G[Export Booking Equipment Deficit]
-    G --> H[Spot Leasing Requirement]
-    H --> I[CargoPilot Optimization & Replanning]
+### 15.2 Storm Chain
+```text
+Storm
+  ↓
+Weather Impact
+  ↓
+Vessel Delay
+  ↓
+Late Arrival
+  ↓
+Port Workload Change
+  ↓
+Discharge Delay
+  ↓
+Container Availability Decrease
+  ↓
+Equipment Shortage
+  ↓
+CargoPilot Replanning
 ```
 
-### 16.3 Commercial Demand Chain
-
-```mermaid
-graph TD
-    A[Regional Demand Surge] --> B[Customer Booking Spike]
-    B --> C[Increased Empty Container Requirement]
-    C --> D[Terminal Stock Depleted Below Safety Buffer]
-    D --> E[Equipment Shortage Triggered]
-    E --> F[CargoPilot Evaluates Reposition vs Lease]
-    F --> G[Operational Plan Dispatched to World State]
+### 15.3 Demand Chain
+```text
+Demand Increase
+      ↓
+More Bookings
+      ↓
+More Equipment Required
+      ↓
+Equipment Shortage
+      ↓
+CargoPilot Decision
+      ↓
+Repositioning / Leasing
+      ↓
+World State Change
 ```
 
-### 16.4 Upstream-Downstream Dependency Rule
-Every simulation model component must query the instantaneous output of its upstream dependency; calculations must never rely on obsolete pre-computed assumptions.
+### 15.4 Dependency Rule
+A downstream model must consume the current result of its upstream dependency.
+
+For example, if vessel ETA changes:
+```text
+Old ETA
+   ↓
+discard/recalculate dependent events
+   ↓
+New ETA
+   ↓
+new arrival event
+```
+The simulator must not continue using stale timing.
 
 ---
 
-## 17. Forecasting Model
+## 16. Forecasting Model
 
-### 17.1 Purpose & Forecast Horizons
-Provides forward-looking estimates consumed by CargoPilot's multi-week rolling horizon solver:
-- Short-term confirmed demand (Days 1–7)
-- Probabilistic demand projection (Days 8–28)
-- Vessel estimated arrival distributions
-- Expected empty container returns from local consignees
+### 16.1 Purpose
+Forecasting produces future estimates that CargoPilot can use for planning.
 
-### 17.2 Forecast vs. Ground Truth Separation
-The simulator strictly segregates:
+V1 forecast targets should focus on information that is operationally useful to CargoPilot:
+- Demand
+- Equipment requirement
+- Equipment availability
+- Equipment shortage
+- Vessel arrival/ETA
+- Port congestion where required
 
-$$\text{Forecast}(t, t+k) \neq \text{Actual}(t+k)$$
+### 16.2 Forecast vs Actual
+**Forecast:**
 
-The forecast represents the imperfect, noisy information accessible to the planner at time $t$, preserving realistic decision uncertainty.
+$$\text{Forecast}(t, t+k)$$
 
-### 17.3 Information Leakage Prevention
-Future actual events, delays, and random draws occurring at $t+k$ are strictly sealed from CargoPilot until the simulation clock advances to their observation time.
+represents what is predicted at time $t$ for future time $t+k$.
 
-**Parameters:**
-- `FORECAST_HORIZON_DAYS`
-- `FORECAST_UPDATE_INTERVAL_HOURS`
-- `FORECAST_NOISE_SIGMA`
+**Actual:**
+
+$$\text{Actual}(t+k)$$
+
+represents the actual future state.
+
+These must remain separate.
+
+### 16.3 Forecast Generation
+A basic demand forecast can use recent historical demand:
+
+$$\hat{D}_{t+k} = \text{BaseForecast}_t + \text{Trend} + \text{Seasonality} + \text{ForecastError}$$
+
+where forecast error is sampled from the configured error distribution.
+
+### 16.4 Information Leakage
+CargoPilot must not receive future actual information merely because the simulator internally knows it.
+
+For example:
+```text
+Simulator knows:
+Vessel will arrive Day 10 14:00
+
+CargoPilot may know:
+ETA Day 10 14:00
+
+only if that information has been published
+according to the visibility model.
+```
+
+### 16.5 Parameters
+- `FORECAST_HORIZON`
+- `FORECAST_UPDATE_INTERVAL`
+- `FORECAST_NOISE`
 - `FORECAST_ERROR_DISTRIBUTION`
-- `FORECAST_HISTORY_WINDOW_DAYS`
+- `FORECAST_HISTORY_WINDOW`
 
 ---
 
-## 18. Information / Visibility Model
+## 17. Information / Visibility Model
 
-### 18.1 Visibility Hierarchy
-Operational events move through a progressive revelation pipeline:
-
+### 17.1 Purpose
+The simulator distinguishes:
 ```text
-Real World Physical Occurrence (t_event)
-       ↓
-Telemetry / Carrier Observation (t_obs = t_event + Δt_latency)
-       ↓
-EDI / API Transmission
-       ↓
-CargoPilot Ingestion & DB Fact Recording (t_ingest)
+REAL WORLD STATE
+      ↓
+WHAT HAS HAPPENED
+      ↓
+WHAT IS OBSERVABLE
+      ↓
+WHAT CARGOPILOT KNOWS
 ```
 
-### 18.2 Information Timestamp Model
-Every operational fact records three distinct timestamps:
-1. `occurred_at`: True physical event time
-2. `observed_at`: Sensor / terminal operator confirmation time
-3. `ingested_at`: CargoPilot database ingestion time
+### 17.2 Three Timestamps
+An operational fact can have:
+- Occurrence Time
+- Observation Time
+- Ingestion Time
 
-**Parameters:**
-- `EVENT_INFORMATION_DELAY_MINUTES`
-- `FORECAST_UPDATE_DELAY_MINUTES`
-- `VESSEL_POSITION_UPDATE_INTERVAL_MINUTES`
-- `PORT_STATUS_UPDATE_INTERVAL_MINUTES`
+**Example:**
+```text
+Vessel delay occurs       10:00
+Carrier observes          10:30
+CargoPilot ingests        10:35
+```
+
+### 17.3 Event Information Delay
+
+$$T_{\text{observation}} = T_{\text{occurrence}} + D_{\text{information}}$$
+
+and:
+
+$$T_{\text{ingestion}} = T_{\text{observation}} + D_{\text{ingestion}}$$
+
+### 17.4 Parameters
+- `EVENT_INFORMATION_DELAY`
+- `EVENT_INGESTION_DELAY`
+- `FORECAST_UPDATE_DELAY`
+- `VESSEL_POSITION_UPDATE_INTERVAL`
+- `PORT_STATUS_UPDATE_INTERVAL`
 
 ---
 
-## 19. Operational Timeline Model
+## 18. Operational Timeline Model
 
-CargoPilot benchmarks maritime logistics milestones relative to vessel departure Day 0 ($D_0$):
+### 18.1 Purpose
+The simulator must represent the operational lifecycle established for CargoPilot.
 
+### 18.2 Booking-to-Vessel Timeline
 ```text
-Booking Opens (D-42)
-  │
-  ├── Booking Submitted (D-42 to D-7)
-  ├── Booking Confirmed (Within 24h of submission)
-  ├── Cargo-Ready Date (D-10 to D-5)
-  ├── CargoPilot Optimization Window (Continuous)
-  │
-  ├── [7-DAY FREEZE / COMMITMENT CUTOFF] (D-7)
-  │
-  ├── Empty Release & Pickup (D-7 to D-3)
-  ├── Stuffing & Loading at Shipper Facility (D-5 to D-2)
-  ├── Full Container Gate-In at CY (D-3 to D-1)
-  ├── VGM & SI Submission Cutoff (D-2)
-  ├── Load-List Finalization (D-1)
-  ├── Crane Vessel Loading (D-1 to D-0)
-  │
-  └── Vessel Departure: Baseline D₀
-        │
-        └── Actual Telemetry Feedback Loop
+Booking Opens
+      ↓
+Booking Submitted
+      ↓
+Booking Confirmed
+      ↓
+Booking Cutoff
+      ↓
+Cargo Ready
+      ↓
+CargoPilot Planning Window
+      ↓
+Container Assignment Deadline
+      ↓
+Freeze / Commitment
+      ↓
+Empty Release
+      ↓
+Empty Pickup
+      ↓
+Stuffing / Loading
+      ↓
+Full Container Movement
+      ↓
+CY / Gate-in Cutoff
+      ↓
+SI Cutoff
+      ↓
+VGM Cutoff
+      ↓
+Load-list Closure
+      ↓
+Vessel Loading
+      ↓
+Vessel Departure
+      ↓
+Actual Event Feedback
 ```
 
-For milestone lead times:
+### 18.3 Timeline Representation
+Every milestone contains:
+- Timestamp
+- Dependency
+- State transition
+- Lead time/offset
+- Configurable parameter
 
-$$T_{\text{milestone}} = T_{\text{departure}} - X_{\text{lead\_time}}$$
+### 18.4 Example
+For empty release:
+
+$$T_{\text{emptyRelease}} = T_{\text{departure}} - X_{\text{release}}$$
+
+where `EMPTY_RELEASE_LEAD_TIME` is configurable.
+
+### 18.5 Timeline Rule
+Timeline events must be derived from operational dependencies rather than independently generated.
+
+For example:
+```text
+Vessel Departure
+      ↓
+Empty Release
+      ↓
+Empty Pickup
+```
+If vessel departure changes, dependent milestones must be recalculated where they have not already occurred or become locked.
 
 ---
 
-## 20. Failure & Exception Models
+## 19. Failure & Exception Models
 
-### 20.1 Operational Failure Modes
-- Vessel main engine breakdown / mechanical casualty
-- Container physical structural damage / breach
-- Berth unavailability / gantry crane mechanical failure
-- Terminal gate closure / IT system outage
-- Booking cancellation after equipment allocation
-- Abandoned cargo / consignee delivery failure
+### 19.1 Purpose
+Failures represent abnormal operational outcomes.
 
-### 20.2 State Transition Under Failure
-Failures trigger immediate status transitions and ripple through downstream dependencies:
+**Examples:**
+- Vessel mechanical failure
+- Container damage
+- Berth unavailable
+- Port capacity exceeded
+- Equipment unavailable
+- Booking cancellation
+- Delayed cargo
+- Failed movement
 
+### 19.2 Failure Principle
+A failure must cause a state transition and, where appropriate, downstream consequences.
+
+**Example:**
 ```text
-[Vessel Operational] ──► [Mechanical Failure Event] ──► [Speed = 0 / Reduced]
-                                                                 │
-                                                                 ▼
-[Voyage ETA Slipped] ◄── [Repair Time Accumulation] ◄────────────┘
+Mechanical Failure
+      ↓
+Vessel Unavailable
+      ↓
+Voyage Delay
+      ↓
+Arrival Delay
+      ↓
+Container Delay
 ```
 
-**Parameters:**
+### 19.3 Failure Probability
+For an event:
+
+$$\text{Failure} \sim \text{Bernoulli}(p)$$
+
+or, where appropriate, use a time-to-failure distribution.
+
+### 19.4 Parameters
 - `FAILURE_PROBABILITY`
 - `FAILURE_FREQUENCY`
 - `FAILURE_SEVERITY`
-- `FAILURE_DELAY_HOURS`
-- `FAILURE_RECOVERY_TIME_HOURS`
+- `FAILURE_DELAY`
+- `FAILURE_RECOVERY_TIME`
+
+Model-specific parameters override these generic concepts where required.
 
 ---
 
-## 21. Recovery Models
+## 20. Recovery Models
 
-### 21.1 Recovery Mechanism
-Defines how operational components return to equilibrium following disruptions:
-- Vessels increase engine output (catch-up steaming) if schedule slip is modest
-- Ports deploy auxiliary cranes or add overtime shifts to clear backlogs
-- Damaged containers cycle through depot repair depots
+### 20.1 Purpose
+Recovery represents operational recovery after a disruption or failure. It does not refer to simulator software recovery.
 
-### 21.2 Irreversible Consequence Invariant
-Recovery restores operational capacity; it **does not** reverse past historical delays, accrued demurrage, or incurred leasing charges.
+### 20.2 Recovery Flow
+**Example:**
+```text
+Failure
+  ↓
+Entity Unavailable
+  ↓
+Recovery Process
+  ↓
+Repair / Reallocation / Resource Release
+  ↓
+Entity Available
+```
 
-**Parameters:**
-- `RECOVERY_RATE`
-- `RECOVERY_TIME_HOURS`
-- `RECOVERY_CAPACITY_FACTOR`
-- `RECOVERY_DELAY_HOURS`
+### 20.3 Recovery Time
+For a recovery process:
+
+$$T_{\text{recovery}} = T_{\text{failure}} + \text{Duration}_{\text{recovery}}$$
+
+Recovery duration may be deterministic or stochastic.
+
+### 20.4 Parameters
+- `RECOVERY_TIME`
+- `RECOVERY_TIME_MEAN`
+- `RECOVERY_TIME_VARIANCE`
+- `RECOVERY_SUCCESS_PROBABILITY`
+- `RECOVERY_CAPACITY`
 
 ---
 
-## 22. Backlog Model
+## 21. Backlog Model
 
-### 22.1 Definition & Backlog Conservation
-Backlog tracks unfulfilled operational demand accumulated due to capacity bottlenecks:
+### 21.1 Purpose
+Backlog represents operational work that should have been completed but remains outstanding.
 
-$$\text{Backlog}_{t+1} = \text{Backlog}_t + \text{Inflow}_t - \text{Processed}_t$$
+**Examples:**
+- Containers waiting for discharge
+- Containers waiting for pickup
+- Bookings awaiting equipment
+- Vessels waiting for berth
+- Unsatisfied equipment demand
 
-Subject to:
+### 21.2 Backlog Balance
 
-$$\text{Backlog}_t \ge 0 \quad \forall t$$
+$$\text{Backlog}_{t+1} = \text{Backlog}_t + \text{Arrivals} - \text{Completed}$$
 
-### 22.2 Network Backlog Dimensions
-- Backlogged vessel discharge containers waiting in terminal queues
-- Backlogged export bookings awaiting empty container allocation
-- Vessels waiting at anchorage for available berths
+with:
 
-**Parameters:**
+$$\text{Backlog}_t \ge 0$$
+
+### 21.3 Processing Capacity
+If:
+
+$$\text{Arrivals} > \text{ProcessingCapacity}$$
+
+then backlog increases.
+
+Processing capacity can depend on:
+- Cranes
+- Berth availability
+- Yard availability
+- Equipment
+- Congestion
+
+### 21.4 Backlog Effects
+Backlog can affect:
+```text
+Backlog
+ ↓
+Congestion
+ ↓
+Longer Handling
+ ↓
+Vessel Delay
+```
+and:
+```text
+Backlog
+ ↓
+Delayed Container Availability
+ ↓
+Equipment Shortage
+ ↓
+CargoPilot Replanning
+```
+
+### 21.5 Parameters
 - `BACKLOG_CAPACITY`
 - `BACKLOG_PROCESSING_RATE`
 - `BACKLOG_DELAY_FACTOR`
@@ -986,243 +1565,627 @@ $$\text{Backlog}_t \ge 0 \quad \forall t$$
 
 ---
 
-## 23. Cost Models
+## 22. Cost Models
 
-### 23.1 Economic Objective Alignment
-Cost formulations quantify operational performance, matching CargoPilot's MILP objective function:
+### 22.1 Purpose
+Cost models represent operational/economic consequences for simulation and optimization testing.
 
-$$\text{TotalOperationalCost} = \sum_{k} \text{Cost}_k$$
+V1 may represent:
+- Vessel delay
+- Port handling
+- Container handling
+- Repositioning
+- Leasing
+- Equipment shortage
+- Storage
+- Demurrage/detention where included
+- Disruption
+- Recovery
 
-### 23.2 Cost Components
+### 22.2 Total Cost
 
-$$\text{LeaseCost} = \sum_{l, e} Q_{l, e}^{\text{leased}} \times \text{Rate}_e^{\text{lease}} \times \Delta t_{\text{duration}}$$
+$$\text{TotalCost} = \sum \text{Cost}_i$$
 
-$$\text{RepositionCost} = \sum_{leg, e} Q_{leg, e}^{\text{repo}} \times \text{Cost}_{leg, e}^{\text{move}}$$
+### 22.3 Delay Cost
 
-$$\text{VesselDelayCost} = \sum_{v} \Delta t_{v}^{\text{delay}} \times \text{HourlyDelayCost}_v$$
+$$\text{DelayCost} = \text{DelayDuration} \times \text{CostPerHour}$$
 
-$$\text{ShortagePenalty} = \sum_{l, e} Q_{l, e}^{\text{unfulfilled}} \times \text{PenaltyRate}_e^{\text{shortage}}$$
+### 22.4 Lease Cost
 
-$$\text{YardStorageCost} = \sum_{l, e} \text{Inventory}_{l, e} \times \text{DailyStorageRate}_{l, e}$$
+$$\text{LeaseCost} = \text{Quantity} \times \text{Rate} \times \text{Duration}$$
 
-**Configurable Cost Parameters:**
+### 22.5 Repositioning Cost
+
+$$\text{RepositioningCost} = \text{Quantity} \times \text{CostPerContainer}$$
+
+### 22.6 Storage Cost
+
+$$\text{StorageCost} = \text{ContainerCount} \times \text{Days} \times \text{CostPerDay}$$
+
+### 22.7 Parameters
 - `VESSEL_DELAY_COST_PER_HOUR`
-- `PORT_HANDLING_COST_PER_MOVE`
-- `REPOSITIONING_COST_PER_TEU`
+- `PORT_HANDLING_COST`
+- `CONTAINER_HANDLING_COST`
+- `REPOSITIONING_COST_PER_CONTAINER`
 - `LEASE_COST_PER_DAY`
 - `STORAGE_COST_PER_DAY`
 - `SHORTAGE_COST_PER_CONTAINER`
-- `DISRUPTION_OVERHEAD_COST`
+- `DISRUPTION_COST`
+- `RECOVERY_COST`
+
+Cost definitions must remain compatible with the CargoPilot optimization objective.
 
 ---
 
-## 24. Scenario Models
+## 23. Scenario Models
 
-### 24.1 Controlled Simulation Scenarios
-Scenarios provide parameterized, repeatable testbeds for evaluating CargoPilot optimization policies:
-- `NORMAL_OPERATIONS`: Baseline seasonal demand without abnormal shocks
-- `PORT_CONGESTION`: Bottleneck at key transshipment hubs (e.g., Singapore)
-- `VESSEL_DELAY`: Transpacific or transatlantic fleet schedule slippage
-- `TYPHOON_STORM`: Multi-day route weather disruptions
-- `EQUIPMENT_DEFICIT`: Severe container starvation at major Asian export ports
-- `DEMAND_SPIKE`: Holiday booking volume surge (+35%)
-- `COMPOUND_DISRUPTION`: Simultaneous weather delays, berth congestion, and equipment shortage
+### 23.1 Purpose
+Scenarios allow controlled and repeatable experiments.
 
-### 24.2 Scenario Definition Schema
+**V1 scenarios:**
+- `NORMAL`
+- `PORT_CONGESTION`
+- `VESSEL_DELAY`
+- `STORM`
+- `EQUIPMENT_SHORTAGE`
+- `DEMAND_SPIKE`
+- `MULTIPLE_DISRUPTIONS`
+
+### 23.2 Scenario Definition
 ```text
 Scenario
-├── scenario_id: Identifier code
-├── name: Scenario title
-├── start_time: Execution start simulation time
-├── duration_days: Scenario active duration
-├── affected_entities: Target ports, vessels, routes
-├── parameter_overrides: Map of parameter overrides
-└── random_seed: Seed for stochastic reproducibility
+├── ID
+├── Start Time
+├── Duration
+├── Affected Entities
+├── Severity
+├── Behavior
+├── Configuration
+└── Random Seed
 ```
 
-### 24.3 Scenario Principle
-Scenarios parameterize or trigger events within existing model logic; they never replace core domain physics or violate conservation laws.
+### 23.3 Scenario Principle
+A scenario modifies normal model behavior. It does not replace the normal simulation engine.
+
+**Example:**
+```text
+NORMAL MODEL
+      +
+STORM PARAMETERS
+      ↓
+STORM SCENARIO
+```
 
 ---
 
-## 25. Parameters & Configuration
+## 24. Parameters & Configuration
 
-### 25.1 Central Parameter Registry Schema
+### 24.1 Central Parameter Registry
+Every model registers configurable parameters.
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| **Parameter Name** | `string` | Unique UPPER_SNAKE_CASE variable identifier |
-| **Model** | `string` | Owning simulation sub-model domain |
-| **Description** | `string` | Detailed operational meaning and causal impact |
-| **Value** | `any` | Current active value |
-| **Default** | `any` | System default baseline value |
-| **Unit** | `string` | Measurement unit (`knots`, `TEU`, `hours`, `USD/day`, `moves/hour`) |
-| **Min** | `float` / `int` | Minimum allowable value |
-| **Max** | `float` / `int` | Maximum allowable value |
-| **Type** | `enum` | `NUMBER` \| `BOOLEAN` \| `ENUM` \| `DISTRIBUTION` |
-| **Admin Editable** | `boolean` | True if editable via Admin UI |
-| **Runtime Editable** | `boolean` | True if modifiable mid-simulation run |
-| **Scenario Override**| `boolean` | True if scenario can dynamically override |
+**Required fields:**
 
-### 25.2 Configuration Hierarchy & Precedence
+| Field | Meaning |
+| :--- | :--- |
+| **Parameter Name** | Unique identifier |
+| **Model** | Owning model |
+| **Description** | Meaning |
+| **Value** | Current value |
+| **Default** | Default value |
+| **Unit** | Unit |
+| **Min** | Minimum |
+| **Max** | Maximum |
+| **Type** | Number / Boolean / Enum / etc. |
+| **Distribution** | If stochastic |
+| **Scope** | Global / Port / Route / etc. |
+| **Admin Editable** | Whether admin can modify |
+| **Runtime Editable** | Whether value may change during simulation |
+| **Scenario Override** | Whether scenario can override |
 
+### 24.2 Parameter Scope
+Supported scopes include:
+- `GLOBAL`
+- `WORLD`
+- `SCENARIO`
+- `PORT`
+- `ROUTE`
+- `OD_PAIR`
+- `VESSEL_CLASS`
+- `EQUIPMENT_TYPE`
+- `PORT + EQUIPMENT`
+- `ROUTE + EQUIPMENT`
+
+The most specific applicable parameter overrides broader scope.
+
+**Example:**
 ```text
-1. System Default
-      ↓
-2. World Configuration (e.g., World 1 vs. World 2 baseline)
-      ↓
-3. Scenario Overrides (Active experimental shocks)
-      ↓
-4. Model Dynamic Tuning
-      ↓
-5. Runtime State Instance
+Global:
+PORT_LOADING_RATE = 100
+
+Port Chennai:
+PORT_LOADING_RATE[INMAA] = 70
+Chennai uses 70.
 ```
+
+### 24.3 Runtime Parameter Changes
+If an admin changes a runtime-editable parameter:
+```text
+Admin Change
+     ↓
+Validation
+     ↓
+PostgreSQL
+     ↓
+Simulation Engine observes
+     ↓
+Affected future events/models recalculated
+```
+Already completed historical events are not rewritten. Only affected future behavior is changed.
+
+---
+
+## 25. Shared State, PostgreSQL & Kafka Integration
+
+### 25.1 Database Architecture
+The Simulation Engine and CargoPilot use a shared PostgreSQL database. PostgreSQL stores the current operational truth.
+
+Conceptually:
+```text
+                PostgreSQL
+          ┌─────────────────────┐
+          │                     │
+          │ Operational State   │
+          │ Simulation State    │
+          │ CargoPilot State    │
+          │ Allocations         │
+          │ Events / History    │
+          │ Parameters          │
+          │                     │
+          └─────────┬───────────┘
+                    │
+          ┌─────────┴──────────┐
+          │                    │
+    Simulation Engine      CargoPilot
+```
+The two services must have clear ownership of individual entities/operations.
+
+### 25.2 Kafka Responsibility
+Kafka transports changes and notifications. It does not become the authoritative current-state database.
+
+- **PostgreSQL** = What is the current state?
+- **Kafka**      = What changed?
+
+### 25.3 Simulation $\rightarrow$ CargoPilot
+**Example:**
+```text
+Simulation
+   ↓
+State Change
+   ↓
+PostgreSQL
+   ↓
+Kafka Event
+   ↓
+CargoPilot Ingestion
+   ↓
+CargoPilot DB / State
+   ↓
+Optimization
+```
+
+### 25.4 CargoPilot $\rightarrow$ Simulation
+**Example:**
+```text
+CargoPilot Decision
+   ↓
+PostgreSQL
+   ↓
+Kafka Event
+   ↓
+Simulation Engine
+   ↓
+Operational Consequence
+```
+Examples include:
+- Container allocation
+- Repositioning decision
+- Lease decision
+- Planning decision
+
+### 25.5 Event Structure
+Every event should contain:
+- `event_id`
+- `event_type`
+- `entity_type`
+- `entity_id`
+- `simulation_time`
+- `occurrence_time`
+- `source`
+- `world_id`
+- `payload`
+- `caused_by_event_id`
+
+`caused_by_event_id` allows causal chains to be traced.
 
 ---
 
 ## 26. Calibration & Realism
 
 ### 26.1 Purpose
-Transforms theoretical mathematical equations into credible operational realities reflecting true global container shipping dynamics.
+Calibration means adjusting simulation parameters so that simulated behavior falls within realistic operational ranges. It does not require machine learning.
 
-### 26.2 Empirical Calibration Sources
-- Historical carrier schedules and AIS vessel telemetry
-- Port authority terminal productivity reports
-- Container leasing index market rate data
-- Published container shipping operational benchmarks
+### 26.2 Calibration Sources
+Possible sources:
+- Historical operational data
+- Public maritime/logistics data
+- Company data
+- Empirical observations
+- Domain assumptions
 
-### 26.3 Realism vs. Complexity Balance
-The simulation model prioritizes **decision-relevant operational realism**. Physical mechanics that do not meaningfully impact container allocation, leasing, or repositioning decisions are omitted to preserve execution velocity and clarity.
+Synthetic assumptions must be explicitly identified.
+
+### 26.3 Calibration Targets
+**Examples:**
+- Average vessel speed
+- Port turnaround time
+- Berth waiting time
+- Demand distribution
+- Container return time
+- Equipment imbalance
+- Leasing cost
+- Disruption frequency
+- Delay distribution
+
+### 26.4 Calibration Process
+```text
+Initial Parameters
+       ↓
+Run Simulation
+       ↓
+Measure Outputs
+       ↓
+Compare with Target Range
+       ↓
+Adjust Parameters
+       ↓
+Run Again
+```
+The objective is sufficient realism for testing CargoPilot decisions, not perfect reproduction of the physical world.
 
 ---
 
 ## 27. Validation
 
-### 27.1 Invariant Validation
-The simulation engine validates physical invariants at every time step:
+### 27.1 Purpose
+Validation prevents impossible operational states.
 
-#### Entity Spatial Uniqueness
-An individual container or vessel cannot reside in multiple physical locations simultaneously:
+### 27.2 Entity Consistency
+An entity must not simultaneously exist in incompatible states.
 
-$$\text{Location}(c, t) = \text{Unique Location ID}$$
+**Example:**
+```text
+A container cannot simultaneously be:
+AVAILABLE_AT_SHANGHAI
+and:
+IN_TRANSIT_TO_DUBAI
+```
 
-#### Capacity Boundaries
-Terminal yards and vessel capacities can never be exceeded:
+### 27.3 Capacity Constraints
+Mandatory:
 
-$$\text{YardOccupancy}(l, t) \le \text{YardCapacity}(l)$$
+$$\text{YardOccupancy} \le \text{YardCapacity}$$
 
-$$\text{CurrentVesselLoad}(v, t) \le \text{VesselCapacity}(v)$$
+and:
 
-#### Equipment Conservation Check
-For any equipment type $e$ across the entire closed network $\mathcal{N}$:
+$$\text{VesselLoad} \le \text{VesselCapacity}$$
 
-$$\sum_{l \in \mathcal{N}} \text{Inventory}_{l, e}(t) + \sum_{v \in \text{Fleet}} \text{Loaded}_{v, e}(t) + \sum_{c \in \text{Customers}} \text{InUse}_{c, e}(t) = \text{TotalWorldEquipment}_e$$
+### 27.4 Allocation Validation
+Every allocation must reference:
+- Valid booking
+- Valid container
+- Valid equipment type
+- Valid voyage
+
+Locked allocations cannot be modified through normal allocation operations.
+
+### 27.5 Equipment Conservation
+Conceptually:
+
+$$\text{TotalEquipment} = \text{Available} + \text{Allocated} + \text{InTransit} + \text{Unavailable} + \text{OtherValidStates}$$
+
+Equipment cannot appear or disappear without a modeled event.
+
+### 27.6 Event Validation
+Every event must identify:
+- What happened
+- Affected entity
+- Simulation timestamp
+- Source
+- World
+- Event ID
+
+### 27.7 Validation Timing
+Two levels of validation are used.
+
+**Local validation** (after a state-changing event):
+```text
+Event
+ ↓
+State Update
+ ↓
+Validate affected entities/resources
+```
+
+**Advancement validation** (after completing the requested time advancement):
+```text
+Advance
+ ↓
+Process Events
+ ↓
+Full World Validation
+ ↓
+Persist Final State
+```
 
 ---
 
-## 28. Mathematical Notation / Formula Registry
+## 28. Mathematical Formula Registry
 
-| Concept | Mathematical Formulation | Operational Context |
-| :--- | :--- | :--- |
-| **Time Advancement** | $T_{\text{target}} = T_{\text{current}} + \Delta t, \quad 0 < \Delta t \le 24\text{h}$ | Discrete simulation stepping |
-| **State Transition** | $S(t^+) = F\bigl(S(t^-), E, \theta, \omega\bigr)$ | Causal state update function |
-| **Leg Travel Time** | $T_{\text{travel}} = \frac{D}{V_{\text{eff}}}$ | Nautical leg duration calculation |
-| **Effective Speed** | $V_{\text{eff}} = V_{\text{base}} \times F_{\text{weather}} \times F_{\text{operational}}$ | Speed penalty integration |
-| **Port Utilization** | $U(t) = \frac{\text{ResourceUsage}(t)}{\text{ResourceCapacity}(t)}$ | Congestion calculation basis |
-| **Equipment Shortage** | $\text{Shortage} = \max\bigl(0,\, \text{Required} - \text{Available}\bigr)$ | Deficit quantification |
-| **Lease Requirement** | $\text{LeaseReq} = \max\bigl(0,\, \text{Required} - \text{AvailableOwned}\bigr)$ | Third-party procurement volume |
-| **Lease Cost** | $\text{LeaseCost} = Q \times \text{Rate} \times \text{Duration}$ | Direct leasing expenditure |
-| **Backlog Dynamics** | $\text{Backlog}_{t+1} = \text{Backlog}_t + \text{Inflow}_t - \text{Processed}_t$ | Work-in-progress queue balance |
-| **7-Day Cutoff** | $T_{\text{cutoff}} = T_{\text{departure}} - 7\text{ days}$ | Allocation lock commitment boundary |
-| **Surplus Stock** | $\text{Surplus} = \max\bigl(0,\, \text{Available} - \text{SafetyStock}\bigr)$ | Repositioning candidate volume |
-| **Deficit Stock** | $\text{Deficit} = \max\bigl(0,\, \text{SafetyStock} - \text{Available}\bigr)$ | Inbound repositioning requirement |
+The central formula registry contains the formulas used throughout the simulator.
+
+| Concept | Formulation |
+| :--- | :--- |
+| **Simulation Time** | $T_{\text{target}} = T_{\text{current}} + \Delta t$, where $0 < \Delta t \le 24\text{h}$ |
+| **State Transition** | $S(t^+) = F(S(t^-), E, \theta, \omega)$ |
+| **Travel Time** | $T_{\text{travel}} = \frac{D}{V_{\text{eff}}}$ |
+| **Effective Speed** | $V_{\text{eff}} = V_{\text{base}} \times F_{\text{weather}} \times F_{\text{operational}}$ |
+| **Remaining Travel Time** | $T_{\text{remaining}} = \frac{D_{\text{remaining}}}{V_{\text{eff}}}$ |
+| **Port Utilization** | $U = \frac{\text{ResourceUsage}}{\text{ResourceCapacity}}$ |
+| **Congestion Factor** | $F_{\text{congestion}} = 1$ for $U \le U_c$; $F_{\text{congestion}} = 1 + \alpha \times \left(\frac{U - U_c}{1 - U_c}\right)^\beta$ for $U > U_c$ |
+| **Handling Time** | $T_{\text{handling}} = T_{\text{base}} \times F_{\text{congestion}}$ |
+| **Equipment Shortage** | $\text{Shortage} = \max(0,\, \text{Required} - \text{Available})$ |
+| **Surplus** | $\text{Surplus} = \max(0,\, \text{Available} - \text{Target})$ |
+| **Deficit** | $\text{Deficit} = \max(0,\, \text{Target} - \text{Available})$ |
+| **Lease Requirement** | $\text{LeaseRequirement} = \max(0,\, \text{Required} - \text{Available})$ |
+| **Lease Cost** | $\text{LeaseCost} = \text{Quantity} \times \text{Rate} \times \text{Duration}$ |
+| **Repositioning Cost** | $\text{RepositioningCost} = \text{Quantity} \times \text{CostPerContainer}$ |
+| **Storage Cost** | $\text{StorageCost} = \text{ContainerCount} \times \text{Days} \times \text{CostPerDay}$ |
+| **Delay Cost** | $\text{DelayCost} = \text{DelayDuration} \times \text{CostPerHour}$ |
+| **Import Return** | $T_{\text{return}} = T_{\text{delivery}} + T_{\text{customer\_use}}$ |
+| **Backlog Balance** | $\text{Backlog}_{t+1} = \text{Backlog}_t + \text{Arrivals} - \text{Completed}$ |
+| **Allocation Lock** | $T_{\text{cutoff}} = T_{\text{departure}} - 7\text{ days}$ |
+| **Locked Allocation** | $\text{Allocation}_{t+1} = \text{Allocation}_t$ |
+| **Demand Generation** | $\lambda_{i,j,e,t} = D_{\text{base}} \times F_{\text{trend}} \times F_{\text{seasonal}} \times F_{\text{scenario}}$; $D_{i,j,e,t} \sim \text{Poisson}(\lambda_{i,j,e,t})$ |
+| **Information Time** | $T_{\text{observation}} = T_{\text{occurrence}} + D_{\text{information}}$; $T_{\text{ingestion}} = T_{\text{observation}} + D_{\text{ingestion}}$ |
 
 ---
 
 ## 29. Model Dependency Map
 
-```mermaid
-graph TD
-    subgraph Commercial Flow
-        DEM[7. Demand Model] --> BKG[8. Booking Model]
-        BKG --> ALC[9. Allocation & 7-Day Lock]
-    end
+The simulation uses dependencies rather than blindly executing every model.
 
-    subgraph Maritime Transit
-        WTH[15. Weather & Disruptions] --> VSL[4. Vessel Movement & ETA]
-        VSL --> PRT[5. Port & Terminal Operations]
-    end
-
-    subgraph Equipment Balance
-        ALC --> CNT[6. Container & Equipment State]
-        PRT --> CNT
-        CNT --> EQB[12. Equipment Supply & Scarcity]
-        EQB --> RPO[14. Repositioning Model]
-        EQB --> LSE[13. Leasing Model]
-        CNT --> IMP[11. Import Return Model]
-        IMP --> CNT
-    end
-
-    subgraph Decision Support
-        EQB --> OPT[CargoPilot MILP Optimizer]
-        OPT --> RPO
-        OPT --> LSE
-    end
+### 29.1 Demand Chain
+```text
+Demand
+   ↓
+Booking
+   ↓
+CargoPilot
+   ↓
+Allocation
+   ↓
+Container State
+   ↓
+Equipment Availability
+   ↓
+Shortage / Surplus
+   ↓
+CargoPilot Decision
+   ├──────────────┐
+   ↓              ↓
+Repositioning   Leasing
+   ↓              ↓
+World State ←─────┘
 ```
 
-### 29.1 Discrete Event Execution Cycle
-During each discrete simulation advancement:
-1. Load instantaneous world state $S(t)$
-2. Query pending scheduled events in SimPy event queue $[t, t + \Delta t]$
-3. For each event (ordered chronologically):
-   - Ingest event parameters and execute state transition function $F$
-   - Apply downstream cascading updates across dependent models
-   - Schedule future triggered events into the queue
-4. Advance simulation clock $T_{\text{sim}} \leftarrow T_{\text{target}}$
-5. Execute invariant consistency validation checks
-6. Emit telemetry events to Kafka and commit snapshot to database
+### 29.2 Vessel/Port Chain
+```text
+Weather / Disruption
+        ↓
+Vessel Movement
+        ↓
+Voyage ETA
+        ↓
+Port Arrival
+        ↓
+Berth Availability
+       / \
+     Yes  No
+      ↓    ↓
+Berthing Queue / Waiting
+      ↓
+Port Operations
+      ↓
+Container Movement
+      ↓
+Equipment Availability
+```
+
+### 29.3 Import Equipment Chain
+```text
+Import Voyage
+     ↓
+Discharge
+     ↓
+Customer
+     ↓
+Customer Use
+     ↓
+Empty Return
+     ↓
+Equipment Available
+     ↓
+Local Equipment Pool
+```
+
+### 29.4 Disruption Chain
+```text
+Disruption
+     ↓
+Affected Model
+     ↓
+State Change
+     ↓
+Generated Event
+     ↓
+Downstream Model
+     ↓
+Further State Changes
+```
+
+### 29.5 Execution Principle
+For an advancement:
+```text
+Load Current State
+        ↓
+Identify Relevant Events
+        ↓
+Execute Chronological Event
+        ↓
+Update State
+        ↓
+Generate Consequences
+        ↓
+Schedule Dependent Events
+        ↓
+Process Next Event
+        ↓
+Continue Until Target Time
+        ↓
+Validate
+        ↓
+Persist
+        ↓
+Publish Required Events
+```
+
+The engine must not:
+- Run every model
+- every simulated hour
 
 ---
 
 ## 30. V1 vs Future Models
 
-### 30.1 In-Scope for V1
-- Port terminals, berths, and container yards
-- Vessel fleets, services, voyage legs, and ETA tracking
-- Container inventory states across 20DC, 40DC, and 40HC
-- Stochastic demand processes and discrete customer bookings
-- 7-day commitment lock enforcement
-- Empty container repositioning operational execution
-- One-way and master equipment leasing
-- Realistic weather, congestion, and mechanical disruptions
-- Causal delay cascading and backlog accumulation
-- Full integration with CargoPilot optimization engine
+### 30.1 V1 Scope
+V1 includes:
+- Ports
+- Terminals
+- Vessels
+- Voyages
+- Containers
+- Equipment
+- Demand
+- Bookings
+- CargoPilot allocation
+- Seven-day allocation lock
+- Import returns
+- Equipment availability
+- Equipment scarcity
+- Leasing
+- Repositioning
+- Disruptions
+- Delays
+- Failures
+- Recovery
+- Backlog
+- Forecasting
+- Information visibility
+- Operational timelines
+- Costs
+- Scenarios
+- Configurable parameters
+- Admin interventions
+- PostgreSQL state persistence
+- Kafka event propagation
+- Deterministic simulation
+- SimPy event-driven execution
 
-### 30.2 Explicitly Out-of-Scope for V1
-- 3D vessel hydrodynamic resistance modeling
-- Ship engine thermodynamics and propeller cavitation
-- Microscopic crane rope dynamics and spreader kinematics
-- Individual terminal worker shift behavior and union rules
-- Full 3D container terminal digital-twin physics
+### 30.2 Explicitly Out of Scope
+V1 does not include:
+- Detailed ship hydrodynamics
+- Engine thermodynamics
+- Individual engine component simulation
+- Detailed ocean physics
+- Exact weather forecasting
+- Detailed crane mechanics
+- Detailed worker behavior
+- Full terminal digital twin
+- Detailed human/customer behavioral simulation
 
-### 30.3 Future Extensions (V2+)
-- Street-turn / triangulation optimization (customer-to-customer empty re-use)
-- Dynamic demurrage & detention tariff calculations
-- Intermodal inland rail and barge network extensions
-- Machine-learning driven predictive container maintenance
-- Multi-carrier vessel sharing agreements (alliances / slot charting)
+### 30.3 Future Extensions
+Possible future extensions:
+- Advanced terminal simulation
+- Advanced weather systems
+- Detailed vessel physics
+- Detailed crane/resource modeling
+- Richer customer behavior
+- Advanced market models
+- Street-turn / triangulation
+- Sophisticated forecasting
+- Real-world API integration
+- Historical calibration
+- Larger optimization horizons
+- More detailed physical simulation
 
 ---
 
 ## Final Modeling Principle
 
-The CargoPilot Simulation Engine operates under the governing principle:
+The CargoPilot Simulation Engine follows:
 
 $$\boxed{ \text{Current State} + \text{Events} + \text{Configuration} + \text{Random Outcomes} \longrightarrow \text{State Changes} + \text{New Events} }$$
 
-- **The Simulator** creates, advances, and maintains the ground-truth operational world.
-- **SimPy** manages the discrete event execution engine and scheduling timelines.
-- **Kafka** streams real-time telemetry events across the ecosystem.
-- **The Database** stores authoritative world state snapshots and historical trajectories.
-- **CargoPilot** ingests operational state, runs mathematical optimization solvers, and issues tactical recommendations.
-- **Human Operators** review recommendations and execute decisions, which loop back to become active constraints in the evolving simulation world.
+The responsibilities are:
+
+```text
+┌─────────────────────────────────────────────┐
+│ Simulation Engine                           │
+│ Creates and evolves the operational world   │
+└─────────────────────────────────────────────┘
+                      │
+                      ▼
+              ┌──────────────┐
+              │    SimPy     │
+              │ Time + Events│
+              └──────────────┘
+
+              PostgreSQL
+        Current Operational Truth
+                  ↕
+               Kafka
+          Event Propagation
+                  ↕
+              CargoPilot
+       Planning + Optimization
+
+                 Admin
+                   ↓
+             Configuration
+                   ↓
+              Simulation
+```
+
+The simulator must preserve:
+- Causality
+- State continuity
+- Reproducibility
+- Configurability
+- World consistency
+- Operational realism
+- Information visibility
+- Separation of simulation behavior and CargoPilot decisions
+
+The shared PostgreSQL database represents current operational truth, Kafka represents what changed, SimPy provides simulation execution and virtual time, the Simulation Engine creates and evolves operational reality, and CargoPilot makes planning and optimization decisions.
+
+This document is now suitable as the implementation baseline for `services/simulation/`. The companion [Doc 1](file:///Users/adityasahrawat/dev/projects/cargoPilot/doc/CargoPilot-Simulation-Engine%E2%80%94Design-Specification.md) establishes the overall system architecture, component responsibilities, and event flow.
