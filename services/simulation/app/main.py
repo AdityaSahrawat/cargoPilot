@@ -70,3 +70,13 @@ async def health_check() -> Dict[str, str]:
         "service": "cargopilot-simulation",
         "version": "1.0.0",
     }
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8001))
+    host = os.environ.get("HOST", "127.0.0.1")
+    uvicorn.run("app.main:app", host=host, port=port, reload=True)
+
