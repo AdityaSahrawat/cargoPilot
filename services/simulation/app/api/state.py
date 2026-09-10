@@ -9,9 +9,13 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select, desc
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.control import get_controller
 from app.controller.simulation_controller import SimulationController
+from app.db.database import get_db_session
+from app.db.sim_models import SimulationEvent
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +41,7 @@ async def get_full_state(
 
     return {
         "run_id": str(state.run_id),
+        "baseline_id": state.world_baseline_id,
         "world_id": state.world_id,
         "simulation_time": state.simulation_time.isoformat(),
         "vessels_count": len(state.vessels),
@@ -44,6 +49,9 @@ async def get_full_state(
         "voyages_count": len(state.voyages),
         "containers_count": len(state.containers),
         "bookings_count": len(state.bookings),
+        "leases_count": len(state.leases),
+        "equipment_balances_count": len(state.equipment),
+        "demand_forecast_count": len(state.demand.current_demand),
         "active_disruptions_count": len(state.active_disruptions),
         "kpis": {
             "total_cost": state.kpis.total_cost,
@@ -66,9 +74,12 @@ async def get_vessels(
     return [
         {
             "vessel_id": v.vessel_id,
+            "name": v.name,
             "status": v.status,
             "current_voyage_id": v.current_voyage_id,
             "current_port_id": v.current_port_id,
+            "origin_port_id": v.origin_port_id,
+            "destination_port_id": v.destination_port_id,
             "position_fraction": v.position_fraction,
             "distance_remaining_nm": v.distance_remaining_nm,
             "current_speed_knots": v.current_speed_knots,
@@ -93,6 +104,9 @@ async def get_ports(
         {
             "port_id": p.port_id,
             "unlocode": p.unlocode,
+            "name": p.name,
+            "latitude": p.latitude,
+            "longitude": p.longitude,
             "berths_total": p.berths_total,
             "berths_occupied": p.berths_occupied,
             "berths_available": p.berths_available,
@@ -203,3 +217,157 @@ async def get_kpis(
         "bookings_cancelled": kpis.bookings_cancelled,
         "equipment_shortages": kpis.equipment_shortages,
     }
+
+
+@router.get("/state/voyages", status_code=status.HTTP_200_OK)
+async def get_voyages(
+    controller: SimulationController = Depends(get_controller),
+) -> List[Dict[str, Any]]:
+    """Return state of all voyages."""
+    state = controller.state
+    if not state:
+        raise HTTPException(status_code=404, detail="No active simulation run")
+
+    return [
+        {
+            "voyage_id": vy.voyage_id,
+            "vessel_id": vy.vessel_id,
+            "origin_port_id": vy.origin_port_id,
+            "destination_port_id": vy.destination_port_id,
+            "scheduled_departure": vy.scheduled_departure.isoformat() if vy.scheduled_departure else None,
+            "scheduled_arrival": vy.scheduled_arrival.isoformat() if vy.scheduled_arrival else None,
+            "actual_departure": vy.actual_departure.isoformat() if vy.actual_departure else None,
+            "estimated_arrival": vy.estimated_arrival.isoformat() if vy.estimated_arrival else None,
+            "actual_arrival": vy.actual_arrival.isoformat() if vy.actual_arrival else None,
+            "status": vy.status,
+            "route_distance_nm": vy.route_distance_nm,
+            "capacity_teu": vy.capacity_teu,
+            "booked_teu": vy.booked_teu,
+        }
+        for vy in state.voyages.values()
+    ]
+
+
+@router.get("/state/demand", status_code=status.HTTP_200_OK)
+async def get_demand(
+    controller: SimulationController = Depends(get_controller),
+) -> Dict[str, Any]:
+    """Return active demand forecast and signals."""
+    state = controller.state
+    if not state:
+        raise HTTPException(status_code=404, detail="No active simulation run")
+
+    current = [
+        {
+            "origin_port_id": k[0],
+            "destination_port_id": k[1],
+            "equipment_type": k[2],
+            "forecast_units": v,
+        }
+        for k, v in state.demand.current_demand.items()
+    ]
+    historical = [
+        {
+            "origin_port_id": k[0],
+            "destination_port_id": k[1],
+            "equipment_type": k[2],
+            "day_offset": k[3],
+            "volume": v,
+        }
+        for k, v in list(state.demand.historical_demand.items())[:50]
+    ]
+    return {
+        "current_demand": current,
+        "historical_demand": historical,
+        "total_demand_forecast": sum(item["forecast_units"] for item in current),
+    }
+
+
+@router.get("/state/leases", status_code=status.HTTP_200_OK)
+async def get_leases(
+    controller: SimulationController = Depends(get_controller),
+) -> List[Dict[str, Any]]:
+    """Return all equipment lease agreements."""
+    state = controller.state
+    if not state:
+        raise HTTPException(status_code=404, detail="No active simulation run")
+
+    return [
+        {
+            "lease_id": l.lease_id,
+            "location_id": l.location_id,
+            "equipment_type": l.equipment_type,
+            "quantity": l.quantity,
+            "daily_rate": l.daily_rate,
+            "start_time": l.start_time.isoformat() if l.start_time else None,
+            "duration_days": l.duration_days,
+            "status": l.status,
+            "equipment_available_at": l.equipment_available_at.isoformat() if l.equipment_available_at else None,
+        }
+        for l in state.leases.values()
+    ]
+
+
+@router.get("/state/equipment", status_code=status.HTTP_200_OK)
+async def get_equipment(
+    limit: int = Query(default=200, le=1000),
+    controller: SimulationController = Depends(get_controller),
+) -> List[Dict[str, Any]]:
+    """Return equipment balances by location and equipment type."""
+    state = controller.state
+    if not state:
+        raise HTTPException(status_code=404, detail="No active simulation run")
+
+    balances = list(state.equipment.values())[:limit]
+    return [
+        {
+            "location_id": eq.location_id,
+            "equipment_type": eq.equipment_type,
+            "available": eq.available,
+            "allocated": eq.allocated,
+            "in_transit": eq.in_transit,
+            "unavailable": eq.unavailable,
+            "target": eq.target,
+            "total": eq.total,
+            "shortage": eq.shortage,
+            "surplus": eq.surplus,
+            "deficit": eq.deficit,
+        }
+        for eq in balances
+    ]
+
+
+@router.get("/state/events", status_code=status.HTTP_200_OK)
+async def get_recent_events(
+    limit: int = Query(default=20, le=100),
+    controller: SimulationController = Depends(get_controller),
+    db: AsyncSession = Depends(get_db_session),
+) -> List[Dict[str, Any]]:
+    """Return the most recent simulation events for the current run, ordered by simulation_time DESC."""
+    state = controller.state
+    if not state:
+        raise HTTPException(status_code=404, detail="No active simulation run")
+
+    run_id = state.run_id
+
+    result = await db.execute(
+        select(SimulationEvent)
+        .where(SimulationEvent.run_id == run_id)
+        .order_by(desc(SimulationEvent.simulation_time))
+        .limit(limit)
+    )
+    events = result.scalars().all()
+
+    return [
+        {
+            "event_id": str(e.event_id),
+            "event_type": e.event_type,
+            "entity_type": e.entity_type,
+            "entity_id": e.entity_id,
+            "simulation_time": e.simulation_time.isoformat(),
+            "source": e.source,
+            "payload": e.payload or {},
+            "caused_by_event_id": str(e.caused_by_event_id) if e.caused_by_event_id else None,
+        }
+        for e in events
+    ]

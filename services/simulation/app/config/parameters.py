@@ -19,6 +19,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import copy
+import hashlib
+import json
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
@@ -148,6 +151,34 @@ class ParameterRegistry:
         """Apply a scenario's parameter override map at simulation start."""
         for name, value in overrides.items():
             self.set(name, value)
+
+    def clone(self) -> ParameterRegistry:
+        """Create an isolated deep copy of this registry so runs do not mutate global defaults."""
+        new_reg = ParameterRegistry.__new__(ParameterRegistry)
+        new_reg._params = {k: copy.copy(v) for k, v in self._params.items()}
+        new_reg._scoped = dict(self._scoped)
+        return new_reg
+
+    def resolve_for_run(
+        self, overrides: Dict[str, Any]
+    ) -> Tuple[ParameterRegistry, Dict[str, Any], str]:
+        """
+        Produce an isolated ParameterRegistry for a specific run by cloning self
+        and applying scenario overrides.
+        Returns:
+            (run_registry, resolved_parameters_dict, config_hash)
+        """
+        run_reg = self.clone()
+        run_reg.apply_scenario_overrides(overrides)
+
+        resolved = {p.name: p.value for p in run_reg.all_params()}
+        if run_reg._scoped:
+            resolved["_scoped"] = {f"{k[0]}[{k[1]}]": v for k, v in run_reg._scoped.items()}
+
+        raw = json.dumps(resolved, sort_keys=True, default=str)
+        config_hash = hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+        return run_reg, resolved, config_hash
 
     def all_params(self) -> List[SimParameter]:
         return list(self._params.values())

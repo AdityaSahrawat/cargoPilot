@@ -66,6 +66,21 @@ async def test_api_full_flow():
         vessels = vessels_resp.json()
         assert len(vessels) == 18
 
+        # 6b. Check voyages, demand, leases, equipment endpoints
+        voyages_resp = await client.get("/api/v1/simulation/state/voyages")
+        assert voyages_resp.status_code == 200
+
+        demand_resp = await client.get("/api/v1/simulation/state/demand")
+        assert demand_resp.status_code == 200
+        assert "current_demand" in demand_resp.json()
+
+        leases_resp = await client.get("/api/v1/simulation/state/leases")
+        assert leases_resp.status_code == 200
+
+        equipment_resp = await client.get("/api/v1/simulation/state/equipment")
+        assert equipment_resp.status_code == 200
+        assert len(equipment_resp.json()) > 0
+
         # 7. Inject disruption
         dis_resp = await client.post(
             "/api/v1/simulation/inject-disruption",

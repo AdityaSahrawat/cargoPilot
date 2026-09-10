@@ -25,6 +25,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     Float,
@@ -50,6 +51,39 @@ def _uuid() -> uuid.UUID:
 
 
 # ---------------------------------------------------------------------------
+# 0. WorldBaseline — immutable initial world snapshot
+# ---------------------------------------------------------------------------
+
+class WorldBaseline(SimBase):
+    """
+    Immutable world baseline snapshot.
+
+    Contains the serialized initial world state (55 ports, 18 vessels, 24 voyages,
+    equipment, containers, bookings, demand history) at baseline_time (T_sim=0).
+    Runs clone this baseline without modifying it.
+    """
+    __tablename__ = "world_baselines"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=_uuid
+    )
+    world_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    seeder_version: Mapped[str] = mapped_column(String(32), nullable=False, default="v1")
+    world_seed: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    baseline_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
+    entity_counts: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    baseline_json: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+    __table_args__ = (
+        Index("ix_world_baselines_world_version", "world_id", "seeder_version"),
+        Index("ix_world_baselines_world_created", "world_id", "created_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
 # 1. SimulationRun — first-class concept (Rule 8)
 # ---------------------------------------------------------------------------
 
@@ -70,6 +104,14 @@ class SimulationRun(SimBase):
     )
     world_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     """Identifier of the initial world dataset (e.g. 'world-2')."""
+
+    baseline_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("world_baselines.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    """Immutable baseline snapshot from which this run was cloned."""
 
     scenario_id: Mapped[str] = mapped_column(String(64), nullable=False)
     """Scenario used for this run (e.g. 'NORMAL', 'STORM')."""
@@ -316,12 +358,19 @@ class VesselSimState(SimBase):
     vessel_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     """References services/api vessels.id (UUID as string)."""
 
+    name: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    """Human-readable vessel name, e.g. 'MV Ever Quantum'."""
+
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     """AVAILABLE | SCHEDULED | IN_TRANSIT | ARRIVED | WAITING_FOR_BERTH |
        IN_PORT | DEPARTED | DELAYED | UNAVAILABLE"""
 
     current_voyage_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     current_port_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    origin_port_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    """Origin port of the current active voyage leg (for map position interpolation)."""
+    destination_port_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    """Destination port of the current active voyage leg (for map position interpolation)."""
 
     position_fraction: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     """Fraction of current leg completed: 0.0 (at origin) → 1.0 (at destination)."""
@@ -380,6 +429,13 @@ class PortSimState(SimBase):
     )
     port_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     """References services/api locations.id (UUID as string)."""
+
+    name: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    """Human-readable port name, e.g. 'Shanghai'."""
+    latitude: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    """WGS-84 latitude for map rendering."""
+    longitude: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    """WGS-84 longitude for map rendering."""
 
     berths_total: Mapped[int] = mapped_column(Integer, nullable=False, default=4)
     berths_occupied: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

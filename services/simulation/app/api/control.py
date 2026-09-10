@@ -59,11 +59,19 @@ def set_controller(controller: SimulationController) -> None:
 # Pydantic Schemas
 # ---------------------------------------------------------------------------
 
+class CreateWorldRequest(BaseModel):
+    world_id: str = Field(default="world-2", description="World environment identifier")
+    seeder_version: str = Field(default="v1", description="Seeder version tag")
+    baseline_time: Optional[datetime] = Field(default=None, description="T_sim=0 for baseline")
+    force_reseed: bool = Field(default=False, description="Creates a new version; never overwrites")
+
+
 class StartRequest(BaseModel):
     scenario_id: str = Field(default="NORMAL", description="Scenario identifier")
     seed: int = Field(default=42, description="RNG seed")
     start_time: Optional[datetime] = Field(default=None, description="Starting T_sim")
     world_id: str = Field(default="world-2", description="World environment identifier")
+    baseline_id: Optional[str] = Field(default=None, description="Specific baseline UUID to clone")
 
 
 class AdvanceRequest(BaseModel):
@@ -87,27 +95,50 @@ class InjectDisruptionRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@router.post("/create-world", status_code=status.HTTP_200_OK)
+async def create_world(
+    req: CreateWorldRequest,
+    controller: SimulationController = Depends(get_controller),
+) -> Dict[str, Any]:
+    """Create or ensure an immutable baseline for a world environment."""
+    try:
+        res = await controller.ensure_world_baseline(
+            world_id=req.world_id,
+            seeder_version=req.seeder_version,
+            baseline_time=req.baseline_time,
+            force_reseed=req.force_reseed,
+        )
+        return res
+    except Exception as ex:
+        logger.exception("Failed to create world baseline")
+        raise HTTPException(status_code=400, detail=str(ex))
+
+
 @router.post("/start", status_code=status.HTTP_200_OK)
 async def start_simulation(
     req: StartRequest,
     controller: SimulationController = Depends(get_controller),
 ) -> Dict[str, Any]:
-    """Initialize or start a simulation run."""
+    """Initialize or start a simulation run from an immutable baseline."""
     try:
         state = await controller.start(
             scenario_id=req.scenario_id,
             seed=req.seed,
             start_time=req.start_time,
             world_id=req.world_id,
+            baseline_id=req.baseline_id,
         )
         return {
             "message": "Simulation started successfully",
             "run_id": str(state.run_id),
+            "baseline_id": state.world_baseline_id,
             "simulation_time": state.simulation_time.isoformat(),
             "world_id": state.world_id,
             "scenario_id": req.scenario_id,
             "ports_count": len(state.ports),
             "vessels_count": len(state.vessels),
+            "voyages_count": len(state.voyages),
+            "containers_count": len(state.containers),
         }
     except Exception as ex:
         logger.exception("Failed to start simulation")

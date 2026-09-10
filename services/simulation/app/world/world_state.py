@@ -68,8 +68,13 @@ class VesselState:
     """
     vessel_id: str
     status: str          # AVAILABLE|SCHEDULED|IN_TRANSIT|ARRIVED|WAITING_FOR_BERTH|IN_PORT|DEPARTED|DELAYED|UNAVAILABLE
+    name: str = ""                     # Human-readable vessel name, e.g. "MV Ever Quantum"
     current_voyage_id: Optional[str] = None
     current_port_id: Optional[str] = None
+    origin_port_id: Optional[str] = None
+    """Origin port of the current active voyage leg (for map interpolation)."""
+    destination_port_id: Optional[str] = None
+    """Destination port of the current active voyage leg (for map interpolation)."""
     position_fraction: float = 0.0
     """Fraction of current voyage leg completed: 0.0 → 1.0"""
     distance_remaining_nm: float = 0.0
@@ -100,6 +105,9 @@ class PortState:
     """
     port_id: str
     unlocode: str
+    name: str = ""                     # Human-readable port name, e.g. "Shanghai"
+    latitude: float = 0.0             # WGS-84 latitude for map rendering
+    longitude: float = 0.0            # WGS-84 longitude for map rendering
     berths_total: int = 4
     berths_occupied: int = 0
     vessel_queue: List[str] = field(default_factory=list)
@@ -150,6 +158,7 @@ class VoyageState:
     route_distance_nm: float = 0.0
     capacity_teu: float = 0.0
     booked_teu: float = 0.0
+    remaining_turnaround_hours: float = 0.0
     visibility: Visibility = Visibility.INTERNAL_SIMULATION_KNOWN
 
 
@@ -381,6 +390,7 @@ class WorldState:
     run_id: UUID
     simulation_time: datetime
     world_id: str
+    world_baseline_id: Optional[str] = None
 
     # P(t) — Port state (simulator-owned)
     ports: Dict[str, PortState] = field(default_factory=dict)
