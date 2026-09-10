@@ -37,9 +37,30 @@ async def get_full_state(
     """Return top-level counts and summary of the active world state."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return {
+            "status": "NO_ACTIVE_RUN",
+            "world_id": "world-1",
+            "message": "No active simulation run",
+            "vessels_count": 0,
+            "ports_count": 0,
+            "voyages_count": 0,
+            "containers_count": 0,
+            "bookings_count": 0,
+            "leases_count": 0,
+            "allocations_count": 0,
+            "equipment_balances_count": 0,
+            "demand_forecast_count": 0,
+            "active_disruptions_count": 0,
+            "kpis": {
+                "total_cost": 0.0,
+                "vessels_delayed": 0,
+                "delay_hours": 0.0,
+                "equipment_shortages": 0,
+            },
+        }
 
     return {
+        "status": "RUNNING",
         "run_id": str(state.run_id),
         "baseline_id": state.world_baseline_id,
         "world_id": state.world_id,
@@ -50,6 +71,7 @@ async def get_full_state(
         "containers_count": len(state.containers),
         "bookings_count": len(state.bookings),
         "leases_count": len(state.leases),
+        "allocations_count": len(state.allocations),
         "equipment_balances_count": len(state.equipment),
         "demand_forecast_count": len(state.demand.current_demand),
         "active_disruptions_count": len(state.active_disruptions),
@@ -69,7 +91,7 @@ async def get_vessels(
     """Return state of all vessels."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     return [
         {
@@ -98,7 +120,7 @@ async def get_ports(
     """Return state of all ports, including congestion and berth queues."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     return [
         {
@@ -128,7 +150,7 @@ async def get_containers(
     """Return list of container states up to limit."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     containers = list(state.containers.values())[:limit]
     return [
@@ -152,7 +174,7 @@ async def get_bookings(
     """Return list of active bookings."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     return [
         {
@@ -169,6 +191,28 @@ async def get_bookings(
     ]
 
 
+@router.get("/state/allocations", status_code=status.HTTP_200_OK)
+async def get_allocations(
+    controller: SimulationController = Depends(get_controller),
+) -> List[Dict[str, Any]]:
+    """Return all CargoPilot container allocations."""
+    state = controller.state
+    if not state:
+        return []
+
+    return [
+        {
+            "allocation_id": a.allocation_id,
+            "booking_id": a.booking_id,
+            "container_id": a.container_id,
+            "voyage_id": a.voyage_id,
+            "status": a.status,
+            "locked": a.locked,
+        }
+        for a in state.allocations.values()
+    ]
+
+
 @router.get("/state/disruptions", status_code=status.HTTP_200_OK)
 async def get_disruptions(
     controller: SimulationController = Depends(get_controller),
@@ -176,7 +220,7 @@ async def get_disruptions(
     """Return all active and historical disruptions for current run."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     return [
         {
@@ -199,7 +243,21 @@ async def get_kpis(
     """Return complete KPI and cost accumulator values."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return {
+            "total_cost": 0.0,
+            "total_delay_cost": 0.0,
+            "total_lease_cost": 0.0,
+            "total_repositioning_cost": 0.0,
+            "total_storage_cost": 0.0,
+            "total_shortage_penalty": 0.0,
+            "total_disruption_cost": 0.0,
+            "total_delay_hours": 0.0,
+            "vessels_delayed": 0,
+            "bookings_created": 0,
+            "bookings_fulfilled": 0,
+            "bookings_cancelled": 0,
+            "equipment_shortages": 0,
+        }
 
     kpis = state.kpis
     return {
@@ -226,7 +284,7 @@ async def get_voyages(
     """Return state of all voyages."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     return [
         {
@@ -255,7 +313,11 @@ async def get_demand(
     """Return active demand forecast and signals."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return {
+            "current_demand": [],
+            "historical_demand": [],
+            "total_demand_forecast": 0,
+        }
 
     current = [
         {
@@ -290,7 +352,7 @@ async def get_leases(
     """Return all equipment lease agreements."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     return [
         {
@@ -316,7 +378,7 @@ async def get_equipment(
     """Return equipment balances by location and equipment type."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     balances = list(state.equipment.values())[:limit]
     return [
@@ -343,10 +405,10 @@ async def get_recent_events(
     controller: SimulationController = Depends(get_controller),
     db: AsyncSession = Depends(get_db_session),
 ) -> List[Dict[str, Any]]:
-    """Return the most recent simulation events for the current run, ordered by simulation_time DESC."""
+    """Return the most recent simulation events for current run, ordered by simulation_time DESC."""
     state = controller.state
     if not state:
-        raise HTTPException(status_code=404, detail="No active simulation run")
+        return []
 
     run_id = state.run_id
 

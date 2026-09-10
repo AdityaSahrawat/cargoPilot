@@ -216,3 +216,46 @@ async def inject_disruption(
     except Exception as ex:
         logger.exception("Failed to inject disruption")
         raise HTTPException(status_code=400, detail=str(ex))
+
+
+class OptimizeRequest(BaseModel):
+    time_limit_seconds: float = Field(default=30.0, gt=0.0, le=120.0, description="Solver time limit in seconds")
+
+
+@router.post("/optimize", status_code=status.HTTP_200_OK)
+async def run_optimizer(
+    req: Optional[OptimizeRequest] = None,
+    controller: SimulationController = Depends(get_controller),
+) -> Dict[str, Any]:
+    """
+    Run CargoPilot mathematical optimization engine on active simulation world.
+    Mathematically enforces 7-day departure cutoff equality constraints.
+    """
+    time_limit = req.time_limit_seconds if req else 30.0
+    try:
+        report = await controller.run_cargopilot_optimization(time_limit_seconds=time_limit)
+        return report
+    except ValueError as val_err:
+        if str(val_err) == "NO_ACTIVE_RUN":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No active simulation run. Please start or resume a simulation before running optimization.",
+            )
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as ex:
+        logger.exception("Failed to run CargoPilot optimization")
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+@router.get("/optimization-report", status_code=status.HTTP_200_OK)
+async def get_optimization_report(
+    controller: SimulationController = Depends(get_controller),
+) -> Dict[str, Any]:
+    """Return the latest CargoPilot optimization execution report."""
+    report = controller.get_latest_optimization_report()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No optimization report available. Run optimization first.",
+        )
+    return report

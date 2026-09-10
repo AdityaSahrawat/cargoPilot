@@ -96,6 +96,7 @@ class SimulationController:
 
         # Baseline in-memory fallback cache: (world_id, version) -> (serialized_dict, baseline_id)
         self._baselines_cache: Dict[Tuple[str, str], Tuple[Dict[str, Any], UUID]] = {}
+        self._latest_optimization_report: Optional[Dict[str, Any]] = None
 
         # Instantiate domain models
         self._init_domain_models(self._reg, self._rng)
@@ -714,7 +715,29 @@ class SimulationController:
         async with self._lock:
             self._status = SimulationStatus.IDLE
             self._state = None
+            self._latest_optimization_report = None
             logger.info("Simulation reset")
+
+    async def run_cargopilot_optimization(self, time_limit_seconds: float = 30.0) -> Dict[str, Any]:
+        """
+        Execute the CargoPilot mathematical planning engine against active world state.
+        Jointly optimizes allocations, repositioning, and leasing while mathematically
+        enforcing 7-day departure cutoff equality constraints.
+        """
+        async with self._lock:
+            if not self._state or self._status not in (SimulationStatus.RUNNING, SimulationStatus.PAUSED):
+                raise ValueError("NO_ACTIVE_RUN")
+
+            from app.cargopilot.planning_engine import CargoPilotPlanningEngine
+
+            engine = CargoPilotPlanningEngine(self._state, self._reg)
+            report = engine.optimize(time_limit_seconds=time_limit_seconds)
+            report_dict = report.to_dict()
+            self._latest_optimization_report = report_dict
+            return report_dict
+
+    def get_latest_optimization_report(self) -> Optional[Dict[str, Any]]:
+        return self._latest_optimization_report
 
     async def inject_disruption(
         self,

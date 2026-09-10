@@ -7,30 +7,25 @@ requires-python = ">=3.12"
 dependencies = [
     # Simulation engine
     "simpy>=4.1.1",
-
     # Web framework
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.31.0",
-
     # Database
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
     "alembic>=1.14.0",
-
     # Kafka
     "confluent-kafka>=2.6.0",
-
     # Data / validation
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
-
     # Numerical / distributions
     "numpy>=2.1.0",
-
     # Utilities
     "python-dotenv>=1.0.1",
     "python-dateutil>=2.9.0",
     "pytz>=2024.2",
+    "pulp>=2.8.0",
 ]
 
 [project.optional-dependencies]

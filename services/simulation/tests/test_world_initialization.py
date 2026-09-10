@@ -91,7 +91,7 @@ def test_baseline_entity_counts_and_statuses():
 
     # 5. Bookings & Allocations
     assert len(ws.bookings) == 1500
-    assert len(ws.allocations) == 200
+    assert len(ws.allocations) == 500
 
     # 6. Equipment balances
     assert len(ws.equipment) == 165

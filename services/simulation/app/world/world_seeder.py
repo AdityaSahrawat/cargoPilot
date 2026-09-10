@@ -637,14 +637,14 @@ class WorldSeeder:
             )
             state.vessels[vid] = vessel
 
-        # Seed 6 future scheduled voyages (total 18 + 6 = 24)
+        # Seed 6 future scheduled voyages beyond 7-day cutoff (total 18 + 6 = 24)
         future_voyages_specs = [
-            ("VOY-FUT-01", "V001", "SGSIN", "EGPSD", 48.0, 5100.0, 20000.0),
-            ("VOY-FUT-02", "V002", "NLRTM", "DEHAM", 14.0, 280.0, 18000.0),
-            ("VOY-FUT-03", "V004", "SGSIN", "LKCMB", 120.0, 1600.0, 13500.0),
-            ("VOY-FUT-04", "V007", "DEHAM", "BEANR", 10.0, 400.0, 8500.0),
-            ("VOY-FUT-05", "V014", "CNNGB", "KRPUS", 8.0, 530.0, 3200.0),
-            ("VOY-FUT-06", "V017", "AEDXB", "IQUMQ", 12.0, 1200.0, 2200.0),
+            ("VOY-FUT-01", "V001", "SGSIN", "EGPSD", 192.0, 5100.0, 20000.0),  # Day 8
+            ("VOY-FUT-02", "V002", "NLRTM", "DEHAM", 216.0, 280.0, 18000.0),   # Day 9
+            ("VOY-FUT-03", "V004", "CNSHA", "SGSIN", 240.0, 1600.0, 13500.0),  # Day 10
+            ("VOY-FUT-04", "V007", "DEHAM", "BEANR", 264.0, 400.0, 8500.0),   # Day 11
+            ("VOY-FUT-05", "V014", "CNNGB", "KRPUS", 288.0, 530.0, 3200.0),   # Day 12
+            ("VOY-FUT-06", "V017", "INBOM", "AEDXB", 312.0, 1200.0, 2200.0),  # Day 13
         ]
 
         for voy_id, vid, orig, dest, dep_offset_h, dist_nm, cap in future_voyages_specs:
@@ -809,41 +809,56 @@ class WorldSeeder:
             eq_t = rng.choice(eq_types)
             qty = rng.randint(1, 10)
 
-            # Ready time & cutoff
+            alloc_id = None
+            fut_routes = [
+                ("SGSIN", "EGPSD"), ("NLRTM", "DEHAM"), ("CNSHA", "SGSIN"),
+                ("DEHAM", "BEANR"), ("CNNGB", "KRPUS"), ("INBOM", "AEDXB"),
+            ]
+
+            # Ready time, cutoff & voyage assignment
             if b_status == "LOCKED":
-                cargo_ready = sim_start + timedelta(days=rng.randint(1, 6))
+                cargo_ready = sim_start + timedelta(days=rng.randint(1, 5))
                 bkg_time = sim_start - timedelta(days=rng.randint(8, 14))
-                cutoff = sim_start + timedelta(days=rng.randint(1, 6))
+                cutoff = sim_start + timedelta(days=rng.randint(1, 5))
                 lock_st = "LOCKED"
+                assigned_voyage = f"VOY-V{rng.randint(1, 18):03d}-01"
             elif b_status == "ALLOCATED":
-                cargo_ready = sim_start + timedelta(days=rng.randint(7, 20))
+                fut_idx = rng.randint(1, 6)
+                orig, dest = fut_routes[fut_idx - 1]
+                assigned_voyage = f"VOY-FUT-{fut_idx:02d}"
+                cargo_ready = sim_start + timedelta(days=rng.randint(7, 9))
                 bkg_time = sim_start - timedelta(days=rng.randint(2, 7))
                 cutoff = cargo_ready - timedelta(days=7)
                 lock_st = "UNLOCKED"
             elif b_status == "CONFIRMED":
-                cargo_ready = sim_start + timedelta(days=rng.randint(10, 30))
+                cargo_ready = sim_start + timedelta(days=rng.randint(7, 12))
                 bkg_time = sim_start - timedelta(days=rng.randint(1, 4))
                 cutoff = cargo_ready - timedelta(days=7)
                 lock_st = "UNLOCKED"
-            else: # SUBMITTED
-                cargo_ready = sim_start + timedelta(days=rng.randint(14, 40))
+                assigned_voyage = None
+            else:  # SUBMITTED
+                cargo_ready = sim_start + timedelta(days=rng.randint(8, 14))
                 bkg_time = sim_start - timedelta(hours=rng.randint(1, 24))
                 cutoff = cargo_ready - timedelta(days=7)
                 lock_st = "UNLOCKED"
+                assigned_voyage = None
 
-            alloc_id = None
-            assigned_voyage = f"VOY-V00{rng.randint(1, 9):02d}-01"
-
-            if b_status in ("ALLOCATED", "LOCKED") and alloc_idx <= 200:
+            if b_status in ("ALLOCATED", "LOCKED") and alloc_idx <= 500:
                 alloc_id = f"ALLOC-{alloc_idx:04d}"
+                assigned_container_id = f"C-{(8400 + alloc_idx):05d}"
                 state.allocations[alloc_id] = AllocationState(
                     allocation_id=alloc_id,
                     booking_id=bid,
-                    container_id=f"C-{(8400 + alloc_idx):05d}",
+                    container_id=assigned_container_id,
                     voyage_id=assigned_voyage,
                     status="LOCKED" if lock_st == "LOCKED" else "ALLOCATED",
                     locked=(lock_st == "LOCKED"),
                 )
+                if assigned_container_id in state.containers:
+                    c = state.containers[assigned_container_id]
+                    c.booking_id = bid
+                    c.allocation_id = alloc_id
+                    c.current_voyage_id = assigned_voyage
                 alloc_idx += 1
 
             state.bookings[bid] = BookingState(
