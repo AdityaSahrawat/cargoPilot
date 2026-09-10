@@ -145,6 +145,102 @@ interface Scenario {
   description: string;
 }
 
+interface SolverResultData {
+  status: string;
+  objective_value: number;
+  solve_time_seconds: number;
+  num_variables: number;
+  num_constraints: number;
+  num_integer_variables: number;
+  solver_name: string;
+  message: string;
+}
+
+interface PreservedBookingData {
+  booking_id: string;
+  origin_port_id: string;
+  destination_port_id: string;
+  equipment_type: string;
+  quantity: number;
+  scheduled_departure: string;
+  cutoff_time: string;
+  hours_to_departure: number;
+  assigned_voyage_id: string | null;
+  assigned_containers: string[];
+  status: string;
+  compliance_reason: string;
+}
+
+interface BookingAllocationData {
+  booking_id: string;
+  origin_port_id: string;
+  destination_port_id: string;
+  equipment_type: string;
+  required_quantity: number;
+  allocated_quantity: number;
+  unallocated_quantity: number;
+  assigned_containers: string[];
+  assigned_voyage_id: string;
+  vessel_name: string;
+  departure_time: string;
+  arrival_time: string;
+  fulfillment_cost: number;
+}
+
+interface RepositioningDirectiveData {
+  order_id: string;
+  from_port_id: string;
+  to_port_id: string;
+  equipment_type: string;
+  quantity: number;
+  voyage_id: string;
+  departure_time: string;
+  arrival_time: string;
+  estimated_cost: number;
+}
+
+interface LeasingDirectiveData {
+  lease_id: string;
+  location_id: string;
+  equipment_type: string;
+  quantity: number;
+  daily_rate: number;
+  duration_days: number;
+  estimated_cost: number;
+}
+
+interface OptimizationReportData {
+  world_id: string;
+  simulation_time: string;
+  execution_timestamp: string;
+  solver_result: SolverResultData;
+  preserved_decisions: PreservedBookingData[];
+  booking_allocations: BookingAllocationData[];
+  repositioning_directives: RepositioningDirectiveData[];
+  leasing_directives: LeasingDirectiveData[];
+  impact: {
+    total_bookings_evaluated: number;
+    bookings_allocated: number;
+    bookings_unserved: number;
+    teu_allocated: number;
+    containers_allocated: number;
+    locked_bookings_preserved: number;
+    exceptions_preserved: number;
+    repositioning_moves: number;
+    repositioning_teu: number;
+    leased_containers: number;
+    unserved_demand_teu: number;
+    costs: {
+      terminal_handling_cost: number;
+      repositioning_cost: number;
+      leasing_cost: number;
+      unserved_demand_penalty: number;
+      shortage_penalty: number;
+      total_operational_cost: number;
+    };
+  };
+}
+
 type SelectedEntity = { type: "port"; data: Port } | { type: "vessel"; data: Vessel } | null;
 
 function fmtSimTime(iso: string | null) {
@@ -376,6 +472,13 @@ export default function SimulationWorld1Page() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mapReady, setMapReady] = useState(false);
 
+  // CargoPilot Optimizer State
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizationReport, setOptimizationReport] = useState<OptimizationReportData | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTab, setReportTab] = useState<"allocations" | "freeze" | "reposition" | "leases" | "costs">("allocations");
+  const [reportSearch, setReportSearch] = useState("");
+
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<LType.Map | null>(null);
   const portMarkersRef = useRef<LType.CircleMarker[]>([]);
@@ -420,11 +523,13 @@ export default function SimulationWorld1Page() {
     fetchAll();
     fetchSecondary();
     fetch(`${SIM_API}/config/scenarios`).then((r) => { if (r.ok) r.json().then(setScenarios); }).catch(() => {});
+    fetch(`${SIM_API}/optimization-report`).then((r) => { if (r.ok) r.json().then(setOptimizationReport); }).catch(() => {});
     const id1 = setInterval(fetchAll, REFRESH_MS);
     const id2 = setInterval(fetchSecondary, REFRESH_MS * 3);
     return () => { clearInterval(id1); clearInterval(id2); };
   }, [fetchAll, fetchSecondary]);
 
+  // Leaflet Map Initialization with Strict Duplicate Guard
   useEffect(() => {
     if (!mapRef.current) return;
     let isCancelled = false;
@@ -432,12 +537,8 @@ export default function SimulationWorld1Page() {
     import("leaflet").then((mod) => {
       if (isCancelled) return;
       if (!mapRef.current) return;
-
-      // Clean up previous instance if already existing on this element
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
-      }
+      // Guard against concurrent re-initialization in React 18 strict mode
+      if (leafletMap.current) return;
 
       const container = mapRef.current;
       if ((container as unknown as { _leaflet_id?: number })._leaflet_id) {
@@ -452,24 +553,27 @@ export default function SimulationWorld1Page() {
         shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      const map = L.map(container, { center: [20, 10], zoom: 2, zoomControl: true });
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap",
-        maxZoom: 18,
-      }).addTo(map);
+      try {
+        const map = L.map(container, { center: [20, 10], zoom: 2, zoomControl: true });
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap",
+          maxZoom: 18,
+        }).addTo(map);
 
-      leafletMap.current = map;
-      setMapReady(true);
+        leafletMap.current = map;
+        setMapReady(true);
+      } catch (err) {
+        console.warn("Leaflet map initialization skipped:", err);
+      }
     });
 
     return () => {
       isCancelled = true;
       if (leafletMap.current) {
-        leafletMap.current.remove();
+        try {
+          leafletMap.current.remove();
+        } catch {}
         leafletMap.current = null;
-      }
-      if (mapRef.current && (mapRef.current as unknown as { _leaflet_id?: number })._leaflet_id) {
-        delete (mapRef.current as unknown as { _leaflet_id?: number })._leaflet_id;
       }
       setMapReady(false);
     };
@@ -554,6 +658,35 @@ export default function SimulationWorld1Page() {
   const doInjectDisruption = async () => {
     await doControl("inject-disruption", { disruption_type: disruptionType, severity: disruptionSeverity, duration_hours: disruptionDuration });
     setShowDisruptionModal(false);
+  };
+
+  const runOptimizer = async () => {
+    if (isIdle) {
+      showMsg("Simulation is not active. Please click 'Start' first.");
+      return;
+    }
+    setIsOptimizing(true);
+    try {
+      const res = await fetch(`${SIM_API}/optimize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ time_limit_seconds: 30.0 }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOptimizationReport(data);
+        showMsg(`CargoPilot optimization complete: ${data.solver_result?.status ?? "SUCCESS"}`);
+        setShowReportModal(true);
+        await fetchAll();
+        await fetchSecondary();
+      } else {
+        showMsg(`Optimization failed: ${data.detail || "Error"}`);
+      }
+    } catch {
+      showMsg("Connection error running optimizer");
+    } finally {
+      setIsOptimizing(false);
+    }
   };
 
   const ladenC = containers.filter((c) => !EMPTY_STATUSES.has(c.status)).length;
@@ -685,7 +818,74 @@ export default function SimulationWorld1Page() {
                 <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: "#374151" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#16A34A", display: "inline-block" }} />Real Time</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: "#374151" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2563EB", display: "inline-block" }} />Connected</span>
               </div>
-              <button style={{ padding: "7px 14px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 7, fontSize: 12, fontWeight: 600, color: "#1D4ED8", cursor: "pointer" }}>View Timeline →</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                {[1, 6, 12, 24].map((h) => (
+                  <button
+                    key={h}
+                    className="cb"
+                    onClick={() => doAdvance(h)}
+                    disabled={isAdvancing || isIdle}
+                    style={{
+                      padding: "6px 8px",
+                      background: isIdle ? "#F3F4F6" : "#EFF6FF",
+                      color: isIdle ? "#9CA3AF" : "#1D4ED8",
+                      border: `1px solid ${isIdle ? "#E5E7EB" : "#BFDBFE"}`,
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}
+                    title={`Advance simulation by ${h} hours`}
+                  >
+                    +{h}h
+                  </button>
+                ))}
+              </div>
+              <button
+                className="cb"
+                onClick={runOptimizer}
+                disabled={isOptimizing || isIdle}
+                style={{
+                  padding: "7px 14px",
+                  background: isIdle
+                    ? "#F3F4F6"
+                    : isOptimizing
+                    ? "#93C5FD"
+                    : "linear-gradient(135deg,#2563EB,#1D4ED8)",
+                  color: isIdle ? "#9CA3AF" : "#fff",
+                  border: "none",
+                  borderRadius: 7,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: isIdle ? "none" : "0 2px 8px rgba(37,99,235,.25)",
+                }}
+                title={isIdle ? "Start the simulation before running optimizer" : "Run MILP mathematical optimization engine"}
+              >
+                <span>⚡</span>
+                {isOptimizing ? "Optimizing..." : "Run CargoPilot Optimizer"}
+              </button>
+              {optimizationReport && (
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  style={{
+                    padding: "7px 12px",
+                    background: "#F0FDF4",
+                    border: "1px solid #BBF7D0",
+                    borderRadius: 7,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#166534",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span>📊</span> Report ({optimizationReport.solver_result.status})
+                </button>
+              )}
             </div>
           </header>
 
@@ -704,6 +904,59 @@ export default function SimulationWorld1Page() {
 
           {/* Body */}
           <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Idle Warning Banner */}
+            {isIdle && (
+              <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>ℹ️</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#1E40AF" }}>Simulation is Idle (No Active Run)</div>
+                    <div style={{ fontSize: 11.5, color: "#3B82F6" }}>Click Start Simulation below to initialize the operational network clock and enable CargoPilot optimization.</div>
+                  </div>
+                </div>
+                <button className="cb" onClick={() => doControl("start", { scenario_id: selectedScenario, seed: 42, world_id: "world-1" })} style={{ padding: "8px 18px", background: "#2563EB", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+                  ▶ Start Simulation
+                </button>
+              </div>
+            )}
+
+            {/* Optimization Status Summary Card */}
+            {optimizationReport && (
+              <div style={{ background: "linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%)", border: "1px solid #BBF7D0", borderRadius: 11, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                    ⚡
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: "#166534" }}>CargoPilot Mathematical Optimization Plan</span>
+                      <span style={{ padding: "2px 8px", background: "#DCFCE7", color: "#15803D", borderRadius: 12, fontSize: 11, fontWeight: 600 }}>
+                        {optimizationReport.solver_result.status}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#6B7280" }}>
+                        Solved in {optimizationReport.solver_result.solve_time_seconds.toFixed(2)}s ({optimizationReport.solver_result.solver_name})
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#374151", marginTop: 4, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                      <span><strong>{optimizationReport.preserved_decisions.length}</strong> 7-day cutoff bookings preserved (100% frozen)</span>
+                      <span><strong>{optimizationReport.booking_allocations.length}</strong> bookings optimized/allocated</span>
+                      <span><strong>{optimizationReport.impact.repositioning_moves}</strong> empty repositionings</span>
+                      <span><strong>{optimizationReport.impact.leased_containers}</strong> containers leased</span>
+                      <span>Total Operational Cost: <strong>{fmtCurrency(optimizationReport.impact.costs.total_operational_cost)}</strong></span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => setShowReportModal(true)} style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    📊 View Full Optimization Report
+                  </button>
+                  <button onClick={runOptimizer} disabled={isOptimizing || isIdle} style={{ padding: "8px 14px", background: "#fff", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "#374151", cursor: "pointer" }}>
+                    {isOptimizing ? "Solving..." : "Re-Run Optimizer"}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Stats Row */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 10 }}>
@@ -812,6 +1065,9 @@ export default function SimulationWorld1Page() {
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button className="cb" onClick={() => doControl("reset")} style={{ padding: "6px 10px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 6, fontSize: 11 }}>🔄 Reset World</button>
                   <button className="cb" onClick={() => setShowDisruptionModal(true)} style={{ padding: "6px 10px", background: "#FFF7ED", color: "#C2410C", border: "1px solid #FED7AA", borderRadius: 6, fontSize: 11 }}>⚡ Inject Disruption</button>
+                  <button className="cb" onClick={runOptimizer} disabled={isOptimizing || isIdle} style={{ padding: "6px 11px", background: isIdle ? "#F3F4F6" : "#EFF6FF", color: isIdle ? "#9CA3AF" : "#1D4ED8", border: `1px solid ${isIdle ? "#E5E7EB" : "#BFDBFE"}`, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                    ⚡ {isOptimizing ? "Optimizing..." : "Run CargoPilot"}
+                  </button>
                   <button className="cb" onClick={() => showMsg("Snapshot saved")} style={{ padding: "6px 10px", background: "#F5F3FF", color: "#6D28D9", border: "1px solid #DDD6FE", borderRadius: 6, fontSize: 11 }}>💾 Save Snapshot</button>
                 </div>
               </div>
@@ -1026,6 +1282,419 @@ export default function SimulationWorld1Page() {
               <button onClick={() => setShowDisruptionModal(false)} style={{ padding: "8px 18px", background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 7, fontSize: 12.5, cursor: "pointer" }}>Cancel</button>
               <button onClick={doInjectDisruption} style={{ padding: "8px 18px", background: "#DC2626", color: "#fff", border: "none", borderRadius: 7, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Inject Disruption</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* CargoPilot Optimization Intelligence Report Modal */}
+      {showReportModal && optimizationReport && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }}>
+          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 1100, maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", overflow: "hidden", border: "1px solid #E2E8F0" }}>
+
+            {/* Modal Header */}
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid #E5E7EB", background: "linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                <div style={{ width: 44, height: 44, borderRadius: 11, background: "linear-gradient(135deg,#2563EB,#1D4ED8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, color: "#fff", boxShadow: "0 4px 12px rgba(37,99,235,.3)" }}>
+                  ⚡
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0F172A" }}>CargoPilot Mathematical Optimization Report</h2>
+                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11.5, fontWeight: 700, background: optimizationReport.solver_result.status === "OPTIMAL" ? "#DCFCE7" : "#FEF9C3", color: optimizationReport.solver_result.status === "OPTIMAL" ? "#166534" : "#854D0E" }}>
+                      {optimizationReport.solver_result.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                    World: <strong>{optimizationReport.world_id}</strong> · Snapshot: {new Date(optimizationReport.simulation_time).toLocaleString("en-GB")} · Solve Time: <strong>{optimizationReport.solver_result.solve_time_seconds.toFixed(2)}s</strong> ({optimizationReport.solver_result.solver_name})
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setShowReportModal(false)} style={{ background: "#F1F5F9", border: "none", width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 16, color: "#64748B", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Tab Navigation */}
+            <div style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", padding: "0 24px", display: "flex", gap: 6, overflowX: "auto" }}>
+              {[
+                { id: "allocations", label: `📋 Booking Allocations (${optimizationReport.booking_allocations.length})` },
+                { id: "freeze", label: `🔒 7-Day Cutoff Audit (${optimizationReport.preserved_decisions.length})` },
+                { id: "reposition", label: `🔄 Empty Repositioning (${optimizationReport.repositioning_directives.length})` },
+                { id: "leases", label: `📑 Equipment Leases (${optimizationReport.leasing_directives.length})` },
+                { id: "costs", label: "💰 Operational Cost Ledger" },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => { setReportTab(t.id as typeof reportTab); setReportSearch(""); }}
+                  style={{
+                    padding: "12px 14px",
+                    background: "none",
+                    border: "none",
+                    borderBottom: reportTab === t.id ? "2.5px solid #2563EB" : "2.5px solid transparent",
+                    color: reportTab === t.id ? "#2563EB" : "#64748B",
+                    fontWeight: reportTab === t.id ? 600 : 500,
+                    fontSize: 12.5,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Content Body */}
+            <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+
+              {/* TAB 1: Booking Allocations */}
+              {reportTab === "allocations" && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 12 }}>
+                    <div style={{ fontSize: 12.5, color: "#64748B" }}>
+                      Joint mathematical assignment of bookings to containers and voyage legs outside the 7-day frozen window.
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search booking, port, voyage, vessel..."
+                      value={reportSearch}
+                      onChange={(e) => setReportSearch(e.target.value)}
+                      style={{ padding: "7px 12px", border: "1px solid #CBD5E1", borderRadius: 7, fontSize: 12, width: 280, outline: "none" }}
+                    />
+                  </div>
+
+                  <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                          {["Booking ID", "Route", "Equipment", "Req / Alloc", "Assigned Containers", "Voyage & Vessel", "Departure → Arrival", "Fulfillment Cost"].map((h) => (
+                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#64748B", fontWeight: 600, fontSize: 11 }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {optimizationReport.booking_allocations
+                          .filter((b) => {
+                            if (!reportSearch) return true;
+                            const q = reportSearch.toLowerCase();
+                            return (
+                              b.booking_id.toLowerCase().includes(q) ||
+                              b.origin_port_id.toLowerCase().includes(q) ||
+                              b.destination_port_id.toLowerCase().includes(q) ||
+                              b.assigned_voyage_id.toLowerCase().includes(q) ||
+                              b.vessel_name.toLowerCase().includes(q) ||
+                              b.equipment_type.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((b) => (
+                            <tr key={b.booking_id} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{b.booking_id}</td>
+                              <td style={{ padding: "9px 12px" }}>
+                                <span style={{ fontWeight: 500, color: "#1E293B" }}>{b.origin_port_id}</span>
+                                <span style={{ color: "#94A3B8", margin: "0 4px" }}>→</span>
+                                <span style={{ fontWeight: 500, color: "#1E293B" }}>{b.destination_port_id}</span>
+                              </td>
+                              <td style={{ padding: "9px 12px" }}>
+                                <span style={{ padding: "2px 6px", background: "#F1F5F9", borderRadius: 4, fontSize: 11, color: "#475569" }}>
+                                  {b.equipment_type}
+                                </span>
+                              </td>
+                              <td style={{ padding: "9px 12px", color: "#0F172A", fontWeight: 600 }}>
+                                {b.allocated_quantity} / {b.required_quantity}
+                              </td>
+                              <td style={{ padding: "9px 12px" }}>
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 220 }}>
+                                  {b.assigned_containers.map((cid, cIdx) => (
+                                    <span
+                                      key={`${cid}-${cIdx}`}
+                                      style={{
+                                        padding: "1px 5px",
+                                        borderRadius: 4,
+                                        fontSize: 10.5,
+                                        fontWeight: 600,
+                                        background: cid.startsWith("C-LSD") ? "#FAF5FF" : "#EFF6FF",
+                                        color: cid.startsWith("C-LSD") ? "#7C3AED" : "#1D4ED8",
+                                        border: `1px solid ${cid.startsWith("C-LSD") ? "#E9D5FF" : "#BFDBFE"}`,
+                                      }}
+                                    >
+                                      {cid}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td style={{ padding: "9px 12px" }}>
+                                <div style={{ fontWeight: 500, color: "#0F172A" }}>{b.vessel_name}</div>
+                                <div style={{ fontSize: 10.5, color: "#64748B" }}>{b.assigned_voyage_id}</div>
+                              </td>
+                              <td style={{ padding: "9px 12px", fontSize: 11, color: "#475569" }}>
+                                <div>{new Date(b.departure_time).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} {new Date(b.departure_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+                                <div style={{ color: "#94A3B8" }}>→ {new Date(b.arrival_time).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} {new Date(b.arrival_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>
+                              </td>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>
+                                {fmtCurrency(b.fulfillment_cost)}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: 7-Day Cutoff Compliance Audit */}
+              {reportTab === "freeze" && (
+                <div>
+                  <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "14px 18px", marginBottom: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 16 }}>🔒</span>
+                      <h4 style={{ fontSize: 13.5, fontWeight: 700, color: "#166534" }}>Doc 2 §9.4 Operational Freeze Enforcement</h4>
+                    </div>
+                    <p style={{ fontSize: 12, color: "#15803D", lineHeight: 1.5 }}>
+                      All bookings departing within 168 hours (7 days) of the simulation clock T_sim are operationally locked.
+                      Pre-existing container and voyage allocations are locked as mathematical equality constraints in the MILP solver (Y_b,v* = Q_b*, U_b = 0).
+                      Unallocated bookings inside 7 days remain frozen exceptions. The CargoPilot optimization engine strictly respects operational freeze boundaries.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+                    <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, color: "#64748B" }}>Preserved Cutoff Bookings</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", marginTop: 2 }}>{optimizationReport.preserved_decisions.length}</div>
+                      <div style={{ fontSize: 10.5, color: "#16A34A", marginTop: 2 }}>100% compliant with 7-day rule</div>
+                    </div>
+                    <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, color: "#64748B" }}>Locked Allocated Bookings</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", marginTop: 2 }}>
+                        {optimizationReport.preserved_decisions.filter((p) => p.assigned_voyage_id != null).length}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 2 }}>Original allocations preserved</div>
+                    </div>
+                    <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, color: "#64748B" }}>Frozen Exceptions</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", marginTop: 2 }}>
+                        {optimizationReport.preserved_decisions.filter((p) => p.assigned_voyage_id == null).length}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 2 }}>Unallocated inside 7d (not modified)</div>
+                    </div>
+                  </div>
+
+                  <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                          {["Booking ID", "Route", "Equipment & Qty", "Scheduled Departure", "Hours to Departure", "Assigned Voyage", "Assigned Containers", "Compliance Reasoning"].map((h) => (
+                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#64748B", fontWeight: 600, fontSize: 11 }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {optimizationReport.preserved_decisions.map((p) => (
+                          <tr key={p.booking_id} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                            <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{p.booking_id}</td>
+                            <td style={{ padding: "9px 12px" }}>
+                              <span style={{ fontWeight: 500, color: "#1E293B" }}>{p.origin_port_id}</span>
+                              <span style={{ color: "#94A3B8", margin: "0 4px" }}>→</span>
+                              <span style={{ fontWeight: 500, color: "#1E293B" }}>{p.destination_port_id}</span>
+                            </td>
+                            <td style={{ padding: "9px 12px" }}>
+                              <span style={{ padding: "2px 6px", background: "#F1F5F9", borderRadius: 4, fontSize: 11, color: "#475569" }}>
+                                {p.quantity}x {p.equipment_type}
+                              </span>
+                            </td>
+                            <td style={{ padding: "9px 12px", color: "#475569" }}>
+                              {new Date(p.scheduled_departure).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} {new Date(p.scheduled_departure).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                            </td>
+                            <td style={{ padding: "9px 12px" }}>
+                              <span style={{ padding: "2px 7px", borderRadius: 12, fontSize: 11, fontWeight: 700, background: p.hours_to_departure <= 48 ? "#FEE2E2" : "#FEF3C7", color: p.hours_to_departure <= 48 ? "#DC2626" : "#B45309" }}>
+                                {p.hours_to_departure.toFixed(1)}h
+                              </span>
+                            </td>
+                            <td style={{ padding: "9px 12px", fontWeight: 500, color: "#0F172A" }}>
+                              {p.assigned_voyage_id ?? "—"}
+                            </td>
+                            <td style={{ padding: "9px 12px" }}>
+                              <div style={{ display: "flex", gap: 3, flexWrap: "wrap", maxWidth: 160 }}>
+                                {p.assigned_containers.map((cid, cIdx) => (
+                                  <span key={`${cid}-${cIdx}`} style={{ padding: "1px 4px", background: "#F1F5F9", borderRadius: 3, fontSize: 10, color: "#475569" }}>
+                                    {cid}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td style={{ padding: "9px 12px", fontSize: 11, color: "#166534", fontWeight: 500 }}>
+                              {p.compliance_reason}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: Empty Repositioning Directives */}
+              {reportTab === "reposition" && (
+                <div>
+                  <div style={{ fontSize: 12.5, color: "#64748B", marginBottom: 14 }}>
+                    Mathematical empty container repositioning decisions optimizing network vessel surplus slots to mitigate port deficits.
+                  </div>
+                  {optimizationReport.repositioning_directives.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", background: "#F8FAFC", borderRadius: 10 }}>
+                      No empty container repositioning was required for this planning horizon.
+                    </div>
+                  ) : (
+                    <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                            {["Order ID", "Origin → Destination", "Equipment Type", "Quantity", "Assigned Voyage", "Departure → Arrival", "Estimated Cost"].map((h) => (
+                              <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#64748B", fontWeight: 600, fontSize: 11 }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {optimizationReport.repositioning_directives.map((r) => (
+                            <tr key={r.order_id} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{r.order_id}</td>
+                              <td style={{ padding: "9px 12px" }}>
+                                <span style={{ fontWeight: 500, color: "#1E293B" }}>{r.from_port_id}</span>
+                                <span style={{ color: "#94A3B8", margin: "0 4px" }}>→</span>
+                                <span style={{ fontWeight: 500, color: "#1E293B" }}>{r.to_port_id}</span>
+                              </td>
+                              <td style={{ padding: "9px 12px" }}>
+                                <span style={{ padding: "2px 6px", background: "#F1F5F9", borderRadius: 4, fontSize: 11, color: "#475569" }}>
+                                  {r.equipment_type}
+                                </span>
+                              </td>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{r.quantity} TEU</td>
+                              <td style={{ padding: "9px 12px", color: "#2563EB", fontWeight: 500 }}>{r.voyage_id}</td>
+                              <td style={{ padding: "9px 12px", fontSize: 11, color: "#475569" }}>
+                                <div>{new Date(r.departure_time).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                <div style={{ color: "#94A3B8" }}>→ {new Date(r.arrival_time).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                              </td>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{fmtCurrency(r.estimated_cost)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 4: Equipment Leasing Directives */}
+              {reportTab === "leases" && (
+                <div>
+                  <div style={{ background: "#FAF5FF", border: "1px solid #E9D5FF", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+                    <div style={{ fontWeight: 600, fontSize: 12.5, color: "#6B21A8" }}>Linked Equipment Lease Optimization</div>
+                    <div style={{ fontSize: 11.5, color: "#7E22CE", marginTop: 2 }}>
+                      Lease orders are mathematically constrained to booking fulfillment (Σ_b: origin=p, k=k Σ_v L_b,v ≤ LeaseOrder_p,k).
+                      Leased containers are only acquired when owned inventory plus repositioning is insufficient to satisfy demand.
+                    </div>
+                  </div>
+                  {optimizationReport.leasing_directives.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: "center", color: "#94A3B8", background: "#F8FAFC", borderRadius: 10 }}>
+                      No equipment leases were required — owned container inventory was sufficient.
+                    </div>
+                  ) : (
+                    <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                            {["Lease Order ID", "Port Location", "Equipment Type", "Quantity Ordered", "Daily Rate", "Duration", "Estimated Cost"].map((h) => (
+                              <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#64748B", fontWeight: 600, fontSize: 11 }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {optimizationReport.leasing_directives.map((l) => (
+                            <tr key={l.lease_id} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{l.lease_id}</td>
+                              <td style={{ padding: "9px 12px", fontWeight: 500, color: "#1E293B" }}>{l.location_id}</td>
+                              <td style={{ padding: "9px 12px" }}>
+                                <span style={{ padding: "2px 6px", background: "#F1F5F9", borderRadius: 4, fontSize: 11, color: "#475569" }}>
+                                  {l.equipment_type}
+                                </span>
+                              </td>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{l.quantity} units</td>
+                              <td style={{ padding: "9px 12px", color: "#64748B" }}>{fmtCurrency(l.daily_rate)}/day</td>
+                              <td style={{ padding: "9px 12px", color: "#64748B" }}>{l.duration_days} days</td>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, color: "#0F172A" }}>{fmtCurrency(l.estimated_cost)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 5: Operational Cost Ledger & Solver Health */}
+              {reportTab === "costs" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                  <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ padding: "12px 16px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                      <h4 style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>Itemized Operational Cost Ledger</h4>
+                      <p style={{ fontSize: 11, color: "#64748B" }}>Real operational costs incurred by the optimizer decisions. Zero arbitrary profit.</p>
+                    </div>
+                    <div style={{ padding: "12px 16px" }}>
+                      {[
+                        { label: "Terminal Handling Cost", val: optimizationReport.impact.costs.terminal_handling_cost, color: "#0F172A" },
+                        { label: "Empty Repositioning Cost", val: optimizationReport.impact.costs.repositioning_cost, color: "#0F172A" },
+                        { label: "Equipment Leasing Cost", val: optimizationReport.impact.costs.leasing_cost, color: "#0F172A" },
+                        { label: "Unserved Demand Penalties", val: optimizationReport.impact.costs.unserved_demand_penalty, color: "#DC2626" },
+                        { label: "Port Shortage Penalties", val: optimizationReport.impact.costs.shortage_penalty, color: "#DC2626" },
+                      ].map((item) => (
+                        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F1F5F9", fontSize: 12 }}>
+                          <span style={{ color: "#64748B" }}>{item.label}</span>
+                          <span style={{ fontWeight: 600, color: item.color }}>{fmtCurrency(item.val)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0 6px", fontSize: 14, fontWeight: 700 }}>
+                        <span style={{ color: "#0F172A" }}>Total Operational Cost</span>
+                        <span style={{ color: "#2563EB" }}>{fmtCurrency(optimizationReport.impact.costs.total_operational_cost)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ padding: "12px 16px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                      <h4 style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>MILP Solver Execution & Health</h4>
+                      <p style={{ fontSize: 11, color: "#64748B" }}>Branch-and-cut optimization performance parameters.</p>
+                    </div>
+                    <div style={{ padding: "12px 16px" }}>
+                      {[
+                        { label: "Solver Engine", val: optimizationReport.solver_result.solver_name },
+                        { label: "Solver Status", val: optimizationReport.solver_result.status },
+                        { label: "Execution Time", val: `${optimizationReport.solver_result.solve_time_seconds.toFixed(2)} seconds` },
+                        { label: "Objective Value", val: fmtCurrency(optimizationReport.solver_result.objective_value) },
+                        { label: "Total Decision Variables", val: optimizationReport.solver_result.num_variables },
+                        { label: "Integer / Binary Variables", val: optimizationReport.solver_result.num_integer_variables },
+                        { label: "Total Linear Constraints", val: optimizationReport.solver_result.num_constraints },
+                        { label: "Bookings Evaluated", val: optimizationReport.impact.total_bookings_evaluated },
+                        { label: "Bookings Allocated", val: `${optimizationReport.impact.bookings_allocated} (${optimizationReport.impact.teu_allocated} TEU)` },
+                        { label: "Containers Assigned", val: optimizationReport.impact.containers_allocated },
+                      ].map((item) => (
+                        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #F1F5F9", fontSize: 12 }}>
+                          <span style={{ color: "#64748B" }}>{item.label}</span>
+                          <span style={{ fontWeight: 600, color: "#0F172A" }}>{String(item.val)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: "14px 24px", borderTop: "1px solid #E2E8F0", background: "#F8FAFC", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 11.5, color: "#64748B" }}>
+                ⚓ CargoPilot Discrete-Event Simulation Engine · Mathematical Optimization Module V1
+              </div>
+              <button onClick={() => setShowReportModal(false)} style={{ padding: "8px 20px", background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                Close Report
+              </button>
+            </div>
+
           </div>
         </div>
       )}
