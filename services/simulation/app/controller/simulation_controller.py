@@ -56,6 +56,7 @@ from app.models.visibility_model import VisibilityModel
 from app.world.validator import validate_advancement_state, validate_local_event
 from app.world.world_seeder import WorldSeeder, compute_travel_time_hours, stable_world_seed
 from app.world.world_state import WorldState
+from app.kafka.producer import SimulationKafkaProducer
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,10 @@ class SimulationController:
         self._bus = event_bus
         self._kernel = kernel
         self._session_factory = session_factory
+
+        # Kafka producer — publishes simulation events after each step
+        # No-op (mock) when KAFKA_ENABLED=false
+        self._kafka_producer = SimulationKafkaProducer()
 
         self._lock = asyncio.Lock()
         self._status = SimulationStatus.IDLE
@@ -699,7 +704,15 @@ class SimulationController:
             )
             events.extend(pos_events)
 
+            # Publish simulation telemetry to Kafka (best-effort, after all state changes)
+            # CargoPilot consumer will pick these up to update its operational DB.
+            self._kafka_producer.publish_step_events(events)
+
             return updated_state, events
+
+    def set_kafka_producer(self, producer: SimulationKafkaProducer) -> None:
+        """Override the Kafka producer (e.g. for testing with a mock)."""
+        self._kafka_producer = producer
 
     async def pause(self) -> None:
         async with self._lock:

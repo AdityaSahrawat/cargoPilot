@@ -14,7 +14,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
     "alembic>=1.14.0",
-    # Kafka
+    # Kafka (consumer only — simulation receives decisions, does not publish)
     "confluent-kafka>=2.6.0",
     # Data / validation
     "pydantic>=2.9.0",

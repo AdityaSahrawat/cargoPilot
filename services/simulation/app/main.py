@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Dict
+from typing import AsyncGenerator, Dict, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.control import router as control_router
 from app.api.state import router as state_router
 from app.api.config import router as config_router
+from app.kafka.consumer import SimulationKafkaConsumer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,19 +31,42 @@ logger = logging.getLogger("cargopilot.simulation")
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan context manager."""
     logger.info("CargoPilot Simulation Engine starting up...")
+
+    # ── Database tables ───────────────────────────────────────────────────────
     from app.db.database import create_sim_tables
     try:
         await create_sim_tables()
         logger.info("Simulator-owned database tables verified/created.")
     except Exception as ex:
         logger.warning("Could not auto-create sim tables on startup: %s", ex)
+
+    # ── Kafka consumer (inbound decisions from CargoPilot API) ────────────────
+    # Imported here to avoid a circular import at module level.
+    # The consumer is a no-op when KAFKA_ENABLED=false.
+    from app.api.control import get_controller
+    kafka_consumer: Optional[SimulationKafkaConsumer] = None
+    try:
+        controller = get_controller()
+        kafka_consumer = SimulationKafkaConsumer(controller)
+        await kafka_consumer.start()
+        if kafka_consumer._enabled:
+            logger.info("Kafka consumer started — listening for CargoPilot decisions.")
+        else:
+            logger.info("Kafka consumer in mock mode (KAFKA_ENABLED not set).")
+    except Exception as ex:
+        logger.warning("Kafka consumer could not start: %s", ex)
+
     yield
-    logger.info("CargoPilot Simulation Engine shutting down...")
+
+    # ── Shutdown ──────────────────────────────────────────────────────────────
+    if kafka_consumer is not None:
+        await kafka_consumer.stop()
+    logger.info("CargoPilot Simulation Engine shutting down.")
 
 
 app = FastAPI(
     title="CargoPilot Simulation Engine",
-    description="Discrete-event logistics simulation service using SimPy, PostgreSQL, and Kafka",
+    description="Discrete-event logistics simulation service using SimPy and PostgreSQL",
     version="1.0.0",
     lifespan=lifespan,
 )

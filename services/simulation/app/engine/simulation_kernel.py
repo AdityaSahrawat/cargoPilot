@@ -9,8 +9,7 @@ This is the core of the simulation. The kernel:
     3. Applies 10-level priority for same-time events
     4. Runs local validation after each event
     5. Runs full advancement validation after the step completes
-    6. Persists WorldState changes to PostgreSQL via outbox pattern
-    7. Publishes events to Kafka through the outbox
+    6. Persists WorldState changes to PostgreSQL
 
 Doc 2 §29.5 — Execution Principle:
     Load Current State
@@ -26,8 +25,7 @@ Doc 2 §29.5 — Execution Principle:
     Continue Until T_target
           ↓
     Validate
-          ↓
-    Persist + Publish
+              Persist
 
 Key rule: Does NOT run every model every simulated hour.
 Events are scheduled and fired only when due.

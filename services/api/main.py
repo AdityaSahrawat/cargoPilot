@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -7,6 +8,7 @@ from app.api import health
 from app.api.v1 import api_v1_router
 from app.db.database import Base, engine, test_engine, SessionLocal, TestSessionLocal
 from app.db import models
+from app.kafka.consumer import CargoPilotKafkaConsumer
 from tests.test_world.scenario_builder import ScenarioBuilder
 
 
@@ -37,7 +39,26 @@ async def lifespan(app: FastAPI):
     finally:
         test_db.close()
 
+    # ── Kafka consumer (inbound simulation telemetry) ────────────────────────────
+    # Consumes simulation.* events and updates the CargoPilot operational DB.
+    # No-op when KAFKA_ENABLED is not set.
+    kafka_consumer: Optional[CargoPilotKafkaConsumer] = None
+    try:
+        kafka_consumer = CargoPilotKafkaConsumer(session_factory=SessionLocal)
+        await kafka_consumer.start()
+        if kafka_consumer._enabled:
+            import logging as _log
+            _log.getLogger(__name__).info(
+                "CargoPilot Kafka consumer started — listening for simulation events."
+            )
+    except Exception as ex:
+        import logging as _log
+        _log.getLogger(__name__).warning("Kafka consumer could not start: %s", ex)
+
     yield
+
+    if kafka_consumer is not None:
+        await kafka_consumer.stop()
 
 
 app = FastAPI(title="CargoPilot API", version="1.0.0", lifespan=lifespan)

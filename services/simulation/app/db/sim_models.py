@@ -6,7 +6,7 @@ SQLAlchemy ORM models for tables owned exclusively by the simulation engine.
 Ownership rules (Doc 2 §25.1):
     SIMULATOR-OWNED (this file):
         simulation_runs, simulation_events, simulation_parameters,
-        simulation_snapshots, simulation_outbox,
+        simulation_snapshots,
         vessel_sim_state, port_sim_state, disruptions
 
     CARGOPILOT-OWNED (services/api, NOT here):
@@ -282,53 +282,6 @@ class SimulationSnapshot(SimBase):
         Index("ix_sim_snapshot_run_time", "run_id", "simulation_time"),
     )
 
-
-# ---------------------------------------------------------------------------
-# 5. SimulationOutbox — transactional outbox for Kafka (Rule 5)
-# ---------------------------------------------------------------------------
-
-class SimulationOutbox(SimBase):
-    """
-    Transactional outbox for reliable Kafka publication.
-
-    Pattern (Doc 2 §25, Rule 5):
-        Single DB transaction:
-            1. State change
-            2. INSERT into outbox
-        PostgreSQL COMMIT
-        Background publisher reads outbox → Kafka → marks published
-
-    This ensures PostgreSQL and Kafka never permanently disagree.
-    If Kafka fails after commit, the outbox row retries on next step.
-    """
-    __tablename__ = "simulation_outbox"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=_uuid
-    )
-    run_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
-    )
-    event_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("simulation_events.event_id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    kafka_topic: Mapped[str] = mapped_column(String(128), nullable=False)
-    payload_json: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow
-    )
-    published_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    """Null = pending. Set when successfully published to Kafka."""
-
-    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
-    __table_args__ = (
-        Index("ix_outbox_unpublished", "published_at", "created_at"),
-    )
 
 
 # ---------------------------------------------------------------------------

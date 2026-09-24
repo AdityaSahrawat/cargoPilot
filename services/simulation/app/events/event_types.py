@@ -64,9 +64,9 @@ class EventType:
     All simulation event type string constants.
 
     Grouped by source and direction:
-        SIM_TO_CP: Simulation Engine → CargoPilot (via Kafka)
-        CP_TO_SIM: CargoPilot → Simulation Engine (via Kafka)
-        INTERNAL:  Internal simulation events (not published to Kafka)
+        SIM_TO_CP: Simulation Engine → CargoPilot API
+        CP_TO_SIM: CargoPilot API → Simulation Engine
+        INTERNAL:  Internal simulation events (not published externally)
     """
 
     # --- Vessel events (priority 2) ---
@@ -147,7 +147,7 @@ class EventType:
     REPOSITIONING_COST_INCURRED = "REPOSITIONING_COST_INCURRED"
     SHORTAGE_PENALTY_INCURRED = "SHORTAGE_PENALTY_INCURRED"
 
-    # --- Internal simulation events (not published to Kafka) ---
+    # --- Internal simulation events (not published externally) ---
     SIMULATION_STARTED = "SIMULATION_STARTED"
     SIMULATION_PAUSED = "SIMULATION_PAUSED"
     SIMULATION_RESUMED = "SIMULATION_RESUMED"
@@ -230,55 +230,6 @@ EVENT_PRIORITY: Dict[str, EventPriority] = {
     EventType.VALIDATION_FAILED: EventPriority.PERSISTENCE_PUBLICATION,
 }
 
-# Kafka topics by event category
-KAFKA_TOPICS: Dict[str, str] = {
-    "vessel": "simulation.vessel-events",
-    "port": "simulation.port-events",
-    "container": "simulation.container-events",
-    "booking": "simulation.booking-events",
-    "disruption": "simulation.disruption-events",
-    "cost": "simulation.cost-events",
-    "forecast": "simulation.forecast-events",
-}
-
-# CargoPilot-owned events consumed by simulation
-CP_KAFKA_TOPICS = [
-    "cargopilot.allocation-events",
-    "cargopilot.decision-events",
-]
-
-# Events that are published to Kafka (not internal-only)
-KAFKA_PUBLISHED_EVENTS = {
-    EventType.VESSEL_DEPARTED,
-    EventType.VESSEL_ARRIVED,
-    EventType.VESSEL_DELAYED,
-    EventType.VESSEL_BERTHED,
-    EventType.VESSEL_ETA_UPDATED,
-    EventType.VESSEL_MECHANICAL_FAILURE,
-    EventType.PORT_CONGESTION_CHANGED,
-    EventType.BERTH_OCCUPIED,
-    EventType.BERTH_RELEASED,
-    EventType.PORT_STRIKE_STARTED,
-    EventType.PORT_STRIKE_ENDED,
-    EventType.CONTAINER_GATE_IN,
-    EventType.CONTAINER_GATE_OUT,
-    EventType.CONTAINER_LOADED,
-    EventType.CONTAINER_DISCHARGED,
-    EventType.CONTAINER_DAMAGED,
-    EventType.CONTAINER_RETURNED_EMPTY,
-    EventType.EQUIPMENT_SHORTAGE_DETECTED,
-    EventType.BOOKING_CREATED,
-    EventType.BOOKING_CANCELLED,
-    EventType.BOOKING_MODIFIED,
-    EventType.BOOKING_LOCKED,
-    EventType.DISRUPTION_ACTIVATED,
-    EventType.DISRUPTION_ENDED,
-    EventType.STORM_STARTED,
-    EventType.STORM_ENDED,
-    EventType.FORECAST_UPDATED,
-    EventType.VESSEL_POSITION_PUBLISHED,
-    EventType.PORT_STATUS_PUBLISHED,
-}
 
 
 # ---------------------------------------------------------------------------
@@ -314,31 +265,8 @@ class SimEvent:
         """Return the event's processing priority (Doc 2 §2.5)."""
         return EVENT_PRIORITY.get(self.event_type, EventPriority.PERSISTENCE_PUBLICATION)
 
-    @property
-    def kafka_topic(self) -> Optional[str]:
-        """Return Kafka topic for this event, or None if not published."""
-        if self.event_type not in KAFKA_PUBLISHED_EVENTS:
-            return None
-        # Route to topic by event category
-        et = self.event_type
-        if "VESSEL" in et:
-            return KAFKA_TOPICS["vessel"]
-        if "PORT" in et or "BERTH" in et:
-            return KAFKA_TOPICS["port"]
-        if "CONTAINER" in et or "EQUIPMENT" in et:
-            return KAFKA_TOPICS["container"]
-        if "BOOKING" in et:
-            return KAFKA_TOPICS["booking"]
-        if "DISRUPTION" in et or "STORM" in et or "STRIKE" in et:
-            return KAFKA_TOPICS["disruption"]
-        if "COST" in et or "PENALTY" in et:
-            return KAFKA_TOPICS["cost"]
-        if "FORECAST" in et or "POSITION" in et or "STATUS" in et:
-            return KAFKA_TOPICS["forecast"]
-        return None
-
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize to the 10-field schema for DB and Kafka."""
+        """Serialize to the 10-field schema for DB persistence."""
         return {
             "event_id": str(self.event_id),
             "event_type": self.event_type,

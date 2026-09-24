@@ -4,6 +4,7 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 
 from app.db import models, enums, schemas
+from app.kafka.producer import CargoPilotKafkaProducer, get_producer
 from app.optimization.input_builder import OptimizationInputBuilder
 from app.optimization.solver import Solver
 from app.optimization.models import OptimizationResult
@@ -12,10 +13,13 @@ from app.optimization.models import OptimizationResult
 class OptimizationService:
     """Orchestrates optimization runs: API -> Service -> InputBuilder -> Solver -> DB persistence."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, kafka_producer: Optional[CargoPilotKafkaProducer] = None):
         self.db = db
         self.input_builder = OptimizationInputBuilder(db)
         self.solver = Solver()
+        # Use the provided producer or fall back to the module-level singleton.
+        # In mock mode (KAFKA_ENABLED=false) this is a no-op so existing tests are unaffected.
+        self._kafka = kafka_producer or get_producer()
 
     def run_optimization(
         self,
@@ -114,6 +118,35 @@ class OptimizationService:
 
             self.db.commit()
             self.db.refresh(opt_run)
+
+            # ──────────────────────────────────────────────────────────────
+            # Publish optimization decisions to Kafka so the Simulation
+            # Engine can react to them via SimulationKafkaConsumer.
+            # Publishing happens AFTER the DB commit so decisions are
+            # durable before they are sent downstream.
+            # ──────────────────────────────────────────────────────────────
+            run_id_str = str(opt_run.id)
+
+            for r in result.repositioning:
+                self._kafka.publish_repositioning(
+                    run_id=run_id_str,
+                    reposition_id=f"RP-{opt_run.id}-{r.voyage_leg_id}",
+                    source_location_id=str(r.from_location_id) if r.from_location_id else "",
+                    destination_location_id=str(r.to_location_id) if r.to_location_id else "",
+                    equipment_type=r.container_type.value if hasattr(r.container_type, 'value') else str(r.container_type),
+                    quantity=r.quantity,
+                    cost_per_container=(r.cost / r.quantity) if r.quantity else 0.0,
+                )
+
+            for l in result.leasing:
+                self._kafka.publish_lease(
+                    run_id=run_id_str,
+                    lease_id=str(l.lease_id) if l.lease_id else f"LS-{opt_run.id}-{l.location_id}",
+                    location_id=str(l.location_id),
+                    equipment_type=l.container_type.value if hasattr(l.container_type, 'value') else str(l.container_type),
+                    quantity=l.quantity,
+                    cost_per_container=(l.cost / l.quantity) if l.quantity else 0.0,
+                )
 
         except Exception as e:
             opt_run.status = enums.OptimizationStatus.FAILED
