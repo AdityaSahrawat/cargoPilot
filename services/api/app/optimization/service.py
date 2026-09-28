@@ -135,7 +135,6 @@ class OptimizationService:
                     destination_location_id=str(r.to_location_id) if r.to_location_id else "",
                     equipment_type=r.container_type.value if hasattr(r.container_type, 'value') else str(r.container_type),
                     quantity=r.quantity,
-                    cost_per_container=(r.cost / r.quantity) if r.quantity else 0.0,
                 )
 
             for l in result.leasing:
@@ -145,7 +144,7 @@ class OptimizationService:
                     location_id=str(l.location_id),
                     equipment_type=l.container_type.value if hasattr(l.container_type, 'value') else str(l.container_type),
                     quantity=l.quantity,
-                    cost_per_container=(l.cost / l.quantity) if l.quantity else 0.0,
+                    daily_rate=(l.cost / l.quantity) if l.quantity else 0.0,
                 )
 
         except Exception as e:
