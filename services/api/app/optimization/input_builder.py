@@ -94,12 +94,20 @@ class OptimizationInputBuilder:
             for leg in legs
         ]
 
+        # Gather usable initial inventory per (location, container_type)
+        initial_inventories = {}
+        for loc_id in location_ids:
+            for ctype in container_types:
+                usable_cnt = len(self.get_usable_containers(location_id=loc_id, container_type=ctype))
+                initial_inventories[f"{loc_id}_{ctype.value}"] = usable_cnt
+
         return OptimizationInput(
             company_id=company_id,
             start_week=start_week,
             horizon_weeks=horizon_weeks,
             container_types=container_types,
             location_ids=location_ids,
+            initial_inventories=initial_inventories,
             forecasts=forecasts,
             leg_capacities=leg_capacities,
         )
