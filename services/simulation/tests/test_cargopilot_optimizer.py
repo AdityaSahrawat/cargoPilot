@@ -200,3 +200,7 @@ async def test_multi_period_flow_conservation_constraints(sim_setup):
     assert report.solver_result.num_constraints > 1000
     assert report.impact.bookings_allocated > 0
     assert report.impact.costs.total_operational_cost > 0
+    assert report.impact.costs.holding_cost > 0
+    report_dict = report.to_dict()
+    assert "holding_cost" in report_dict["impact"]["costs"]
+    assert report_dict["impact"]["costs"]["holding_cost"] > 0

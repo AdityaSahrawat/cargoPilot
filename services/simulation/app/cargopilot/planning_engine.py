@@ -116,6 +116,7 @@ class OperationalCostLedger:
     leasing_cost: float = 0.0
     unserved_demand_penalty: float = 0.0
     shortage_penalty: float = 0.0
+    holding_cost: float = 0.0
 
     @property
     def total_operational_cost(self) -> float:
@@ -125,6 +126,7 @@ class OperationalCostLedger:
             + self.leasing_cost
             + self.unserved_demand_penalty
             + self.shortage_penalty
+            + self.holding_cost
         )
 
 
@@ -250,6 +252,7 @@ class OptimizationReport:
                     "leasing_cost": round(self.impact.costs.leasing_cost, 2),
                     "unserved_demand_penalty": round(self.impact.costs.unserved_demand_penalty, 2),
                     "shortage_penalty": round(self.impact.costs.shortage_penalty, 2),
+                    "holding_cost": round(self.impact.costs.holding_cost, 2),
                     "total_operational_cost": round(self.impact.costs.total_operational_cost, 2),
                 },
             },
@@ -269,6 +272,7 @@ class CargoPilotPlanningEngine:
     COST_REPOSITIONING_PER_CONTAINER: float = 350.0
     COST_LEASE_PER_CONTAINER: float = 450.0
     COST_UNSERVED_PER_CONTAINER: float = 3500.0
+    COST_HOLDING_PER_CONTAINER_PER_WEEK: float = 35.0  # 5.0 USD/day * 7 days (Doc 2 §22.6)
     MAX_LEASE_PER_PORT: int = 250
 
     def __init__(self, state: WorldState, registry: Optional[Any] = None):
@@ -636,9 +640,18 @@ class CargoPilotPlanningEngine:
                     )
 
         # -------------------------------------------------------------------
-        # 7. Operational Cost Minimization Objective
+        # 7. Operational Cost Minimization Objective (Doc 1 §5, Doc 2 §22)
         # -------------------------------------------------------------------
         cost_objective = []
+
+        # Determine holding cost rate (from registry or default)
+        cost_holding_week = self.COST_HOLDING_PER_CONTAINER_PER_WEEK
+        if self.registry:
+            try:
+                storage_cost_day = float(self.registry.get("STORAGE_COST_PER_DAY"))
+                cost_holding_week = storage_cost_day * 7.0
+            except (KeyError, TypeError):
+                pass
 
         # Terminal handling cost
         for key, var in Y_own.items():
@@ -663,6 +676,10 @@ class CargoPilotPlanningEngine:
         # Unserved demand penalties
         for b_id, var in U_unserved.items():
             cost_objective.append(self.COST_UNSERVED_PER_CONTAINER * var)
+
+        # Inventory holding / storage costs across planning weeks (Doc 1 §5, Doc 2 §22.6)
+        for (port_id, k, t), var in I_inv.items():
+            cost_objective.append(cost_holding_week * var)
 
         model += pulp.lpSum(cost_objective), "Total_Operational_Cost"
 
@@ -939,12 +956,18 @@ class CargoPilotPlanningEngine:
         # -------------------------------------------------------------------
         # 10. Assemble and Return Optimization Report
         # -------------------------------------------------------------------
+        cost_holding = sum(
+            float(pulp.value(var) or 0.0) * cost_holding_week
+            for (port_id, k, t), var in I_inv.items()
+        )
+
         cost_ledger = OperationalCostLedger(
             terminal_handling_cost=cost_handling,
             repositioning_cost=cost_repositioning,
             leasing_cost=cost_leasing,
             unserved_demand_penalty=cost_unserved,
             shortage_penalty=0.0,
+            holding_cost=cost_holding,
         )
 
         impact = OptimizationImpact(
