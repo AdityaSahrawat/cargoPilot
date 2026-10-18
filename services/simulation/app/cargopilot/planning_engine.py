@@ -480,6 +480,29 @@ class CargoPilotPlanningEngine:
                 )
 
         # -------------------------------------------------------------------
+        # Multi-Period Inventory Variables: I_inv[port_id, eq_type, period]
+        # Tracks available empty equipment stock at port p of type k at the end of week t
+        # (Doc 1 §12, §13: I_{i,k,t} >= 0).
+        # -------------------------------------------------------------------
+        NUM_PERIODS = 4
+        PERIOD_SECONDS = 7 * 86400  # 7-day planning periods
+
+        def _get_period(dt: datetime) -> int:
+            secs = (dt - self.t_sim).total_seconds()
+            p = int(secs // PERIOD_SECONDS)
+            return max(0, min(NUM_PERIODS - 1, p))
+
+        I_inv: Dict[Tuple[str, str, int], pulp.LpVariable] = {}
+        for port_id in self.state.ports.keys():
+            for k in eq_types:
+                for t in range(NUM_PERIODS):
+                    I_inv[(port_id, k, t)] = pulp.LpVariable(
+                        f"Inv_{port_id}_{k}_w{t}",
+                        lowBound=0,
+                        cat=pulp.LpInteger,
+                    )
+
+        # -------------------------------------------------------------------
         # 6. Constraints
         # -------------------------------------------------------------------
 
@@ -502,28 +525,57 @@ class CargoPilotPlanningEngine:
                     f"DemandNoCand_{b.booking_id.replace('-', '_')}",
                 )
 
-        # (b) Origin Equipment Inventory Bound (for EMPTY_AVAILABLE containers)
-        for (port_id, eq_type), c_list in empty_containers.items():
-            avail_count = len(c_list)
-            # Sum of owned allocations from this port
-            b_terms = [
-                Y_own[(b.booking_id, v.voyage_id)]
-                for b in b_opt
-                if b.origin_port_id == port_id and b.equipment_type == eq_type
-                for v in candidate_voyages_by_b[b.booking_id]
-                if (b.booking_id, v.voyage_id) in Y_own
-            ]
-            # Sum of empty repositioning departing from this port
-            repo_terms = [
-                X_repo[(v.voyage_id, eq_type)]
-                for v in scheduled_future_voyages
-                if v.origin_port_id == port_id and (v.voyage_id, eq_type) in X_repo
-            ]
-            if b_terms or repo_terms:
-                model += (
-                    pulp.lpSum(b_terms) + pulp.lpSum(repo_terms) <= avail_count,
-                    f"AvailInv_{port_id}_{eq_type}",
-                )
+        # (b) Multi-Period Inventory Balance & Flow Conservation Constraints
+        # Implements dynamic flow conservation across multi-week planning horizon (Doc 1 §13):
+        #   I[p, k, t] = I[p, k, t-1] + Inflows[p, k, t] - Outflows[p, k, t]
+        # with I[p, k, -1] = I0[p, k] (initial physical empty inventory).
+        for port_id in self.state.ports.keys():
+            for eq_type in eq_types:
+                I0 = len(empty_containers.get((port_id, eq_type), []))
+
+                for t in range(NUM_PERIODS):
+                    # Outflows at period t:
+                    # 1. Owned allocations departing at period t
+                    b_out_terms = [
+                        Y_own[(b.booking_id, v.voyage_id)]
+                        for b in b_opt
+                        if b.origin_port_id == port_id and b.equipment_type == eq_type
+                        for v in candidate_voyages_by_b.get(b.booking_id, [])
+                        if (b.booking_id, v.voyage_id) in Y_own
+                        and _get_period(v.scheduled_departure) == t
+                    ]
+                    # 2. Empty repositioning departing at period t
+                    repo_out_terms = [
+                        X_repo[(v.voyage_id, eq_type)]
+                        for v in scheduled_future_voyages
+                        if v.origin_port_id == port_id
+                        and (v.voyage_id, eq_type) in X_repo
+                        and _get_period(v.scheduled_departure) == t
+                    ]
+                    outflow_expr = pulp.lpSum(b_out_terms) + pulp.lpSum(repo_out_terms)
+
+                    # Inflows at period t:
+                    # 1. Empty repositioning arriving at port_id at period t
+                    repo_in_terms = [
+                        X_repo[(v.voyage_id, eq_type)]
+                        for v in scheduled_future_voyages
+                        if v.destination_port_id == port_id
+                        and (v.voyage_id, eq_type) in X_repo
+                        and _get_period(v.scheduled_arrival) == t
+                    ]
+                    inflow_expr = pulp.lpSum(repo_in_terms)
+
+                    # Flow conservation balance constraint
+                    if t == 0:
+                        model += (
+                            I_inv[(port_id, eq_type, 0)] + outflow_expr - inflow_expr == I0,
+                            f"FlowCons_{port_id}_{eq_type}_w0",
+                        )
+                    else:
+                        model += (
+                            I_inv[(port_id, eq_type, t)] - I_inv[(port_id, eq_type, t - 1)] + outflow_expr - inflow_expr == 0,
+                            f"FlowCons_{port_id}_{eq_type}_w{t}",
+                        )
 
         # (c) Leased Equipment Linkage & Availability
         # Total leased containers assigned to bookings from port p must not exceed LeaseOrder[p, k]

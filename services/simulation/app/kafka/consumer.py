@@ -22,9 +22,10 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from app.controller.simulation_controller import SimulationController
+if TYPE_CHECKING:
+    from app.controller.simulation_controller import SimulationController
 from app.events.event_types import EventType
 
 logger = logging.getLogger(__name__)

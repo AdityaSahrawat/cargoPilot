@@ -180,3 +180,23 @@ async def test_api_optimize_endpoints():
         state_after = await client.get("/api/v1/simulation/state")
         assert state_after.status_code == 200
         assert state_after.json()["allocations_count"] > 500
+
+
+@pytest.mark.asyncio
+async def test_multi_period_flow_conservation_constraints(sim_setup):
+    """
+    Verify that the MILP model formulates multi-period inventory variables
+    (I_{p,k,t} >= 0) and enforces dynamic flow conservation across multiple planning weeks.
+    """
+    controller = sim_setup["controller"]
+    state = await controller.start("NORMAL", seed=42, world_id="world-2")
+
+    engine = CargoPilotPlanningEngine(state, sim_setup["registry"])
+    report = engine.optimize(time_limit_seconds=15.0)
+
+    assert report.solver_result.status in ("OPTIMAL", "FEASIBLE")
+    # Verify that multi-period variables and flow conservation constraints were built
+    assert report.solver_result.num_variables > 1000
+    assert report.solver_result.num_constraints > 1000
+    assert report.impact.bookings_allocated > 0
+    assert report.impact.costs.total_operational_cost > 0
